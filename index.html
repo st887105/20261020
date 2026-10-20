@@ -381,7 +381,9 @@ const CONFIG = {
   // 固定的人名對照：'作品資料夾原名': '人名'
   // 在網頁上用「設定人名」改過後，選單 →「匯出對照」可複製一份貼到這裡，所有裝置就會一致
   nameOverrides: {},
-  version: 'v1.1.1',
+  // 這些資料夾是「容器」，裡面每個子資料夾各自是一部作品
+  containers: ['待確認', '合輯', '未分類'],
+  version: 'v1.2.0',
   updated: '2026-10-20'
 };
 
@@ -490,7 +492,21 @@ function autoName(title) {
   name = name.replace(/^[\s\-–—·・.,，]+|[\s\-–—·・.,，]+$/g, '');
   return name || cleanTitle(title) || title;
 }
-const nameOf = title => overrideFor(title) || autoName(title);
+const SEP = /\s+[-–—－]\s+/;
+// 「人名 - 作品名」格式
+function splitTitle(t) {
+  const parts = t.split(SEP);
+  if (parts.length < 2) return null;
+  const name = cleanTitle(parts[0]) || parts[0].trim();
+  return name ? { name, work: parts.slice(1).join(' - ').trim() } : null;
+}
+function nameOf(title, folderName) {
+  return overrideFor(title) || folderName || splitTitle(title)?.name || autoName(title);
+}
+function displayOf(title) {
+  const sp = splitTitle(title);
+  return (sp && sp.work) || cleanTitle(title) || title;
+}
 function medianRatio(files) {
   const r = files.filter(f => f.width && f.height).slice(0, 40).map(f => f.width / f.height).sort((a, b) => a - b);
   return r.length ? r[Math.floor(r.length / 2)] : 0.75;
@@ -498,12 +514,12 @@ function medianRatio(files) {
 function buildWorks(meta) {
   const works = [];
   const sorter = (a, b) => coll.compare(a.name, b.name);
-  const add = (title, node, acc) => {
+  const add = (title, node, acc, person) => {
     acc.img.sort(sorter); acc.pdf.sort(sorter); acc.vid.sort(sorter);
     const all = [...acc.img, ...acc.pdf, ...acc.vid];
     if (!all.length) return;
     works.push({
-      id: 'w' + works.length, title, display: cleanTitle(title) || title, name: nameOf(title),
+      id: 'w' + works.length, title, display: displayOf(title), person: person || '', name: nameOf(title, person),
       folderid: node.isfolder ? node.folderid : null, file: node.isfolder ? null : node,
       img: acc.img, pdf: acc.pdf, vid: acc.vid,
       size: all.reduce((s, f) => s + (f.size || 0), 0),
@@ -519,7 +535,21 @@ function buildWorks(meta) {
   }
   const rootImgs = empty();
   for (const c of meta.contents || []) {
-    if (c.isfolder) { add(c.name, c, collect(c, empty())); continue; }
+    if (c.isfolder) {
+      const kids = (c.contents || []).filter(x => x.isfolder);
+      const isPerson = kids.some(x => splitTitle(x.name)?.name === c.name.trim());
+      const isContainer = CONFIG.containers.includes(c.name.trim());
+      if (isPerson || isContainer) {
+        // 人名資料夾：裡面每個子資料夾是一部作品；直接放在裡面的檔案歸成「其他」
+        const loose = empty();
+        for (const x of c.contents || []) {
+          if (x.isfolder) add(x.name, x, collect(x, empty()), isPerson ? c.name.trim() : '');
+          else if (!CONFIG.exclude.test(x.name)) { const k = kind(x); if (k) loose[k].push(x); }
+        }
+        if (loose.img.length + loose.pdf.length + loose.vid.length) add(c.name + ' - 其他', c, loose, isPerson ? c.name.trim() : '');
+      } else add(c.name, c, collect(c, empty()));
+      continue;
+    }
     if (CONFIG.exclude.test(c.name)) continue;
     const k = kind(c); if (!k) continue;
     if (k === 'img') rootImgs.img.push(c);
@@ -727,7 +757,7 @@ function openRename(w) {
         o[w.title] = v;
       } else if (act === 'reset') delete o[w.title];
       saveLocalNames(o);
-      S.works.forEach(x => { x.name = nameOf(x.title); });
+      S.works.forEach(x => { x.name = nameOf(x.title, x.person); });
       closeSheet(); render(); updateNameHint();
       toast(act === 'reset' ? '已還原自動判斷' : `已改為「${w.name}」`, 'ok');
     });
@@ -1022,7 +1052,7 @@ $('#btnExportNames').onclick = () => {
 $('#btnClearNames').onclick = () => {
   if (!Object.keys(localNames()).length) { toast('目前沒有自訂的人名'); return; }
   if (!confirm('把這台裝置上自訂的人名全部還原成自動判斷？')) return;
-  saveLocalNames({}); S.works.forEach(x => { x.name = nameOf(x.title); }); render(); updateNameHint();
+  saveLocalNames({}); S.works.forEach(x => { x.name = nameOf(x.title, x.person); }); render(); updateNameHint();
   toast('已全部還原', 'ok');
 };
 $('#btnReload').onclick = () => {
