@@ -65,6 +65,8 @@ input,select{font:inherit;color:inherit}
 .toolbar{display:flex;align-items:center;gap:10px;margin:2px 0 14px;min-height:36px}
 .back{display:inline-flex;align-items:center;gap:2px;padding:7px 10px 7px 6px;border-radius:10px;background:var(--card);border:1px solid var(--line);font-size:13px;flex:none}
 .back .ti{font-size:18px}
+#btnMovePerson{padding:7px 10px;gap:4px}
+@media(max-width:640px){#btnMovePerson span{display:none}}
 /* 人名卡片 */
 .pcard{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;outline:0;transition:transform .15s,border-color .15s}
 @media(hover:hover){.pcard:hover{transform:translateY(-2px);border-color:var(--faint)}}
@@ -212,6 +214,7 @@ a.btn.primary{color:var(--accent-ink)}
 .flist>li>button .ti{font-size:20px;color:var(--muted)}
 .flist span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .flist small{color:var(--faint)}
+.flist .avatar{flex:none;width:28px;height:28px;font-size:12px}
 .sh-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
 .sh-actions .btn{flex:1;min-width:110px}
 .namechips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
@@ -289,6 +292,7 @@ a.btn.primary{color:var(--accent-ink)}
     <div class="toolbar">
       <button class="back" id="btnBack" hidden><i class="ti ti-chevron-left"></i>人名</button>
       <div class="stats" id="stats"></div>
+      <button class="back" id="btnMovePerson" hidden title="把這個人的作品全部移到別的人名"><i class="ti ti-arrows-exchange"></i><span>合併</span></button>
       <div class="seg" id="viewSeg">
         <button data-view="people" title="人名卡片"><i class="ti ti-users"></i><span>人名</span></button>
         <button data-view="grid" title="全部作品"><i class="ti ti-layout-grid"></i><span>作品</span></button>
@@ -405,7 +409,8 @@ const CONFIG = {
   // PDF 中轉站（Cloudflare Worker 網址）。填了之後 PDF 會變成翻頁電子書，任何瀏覽器都能看
   // 例：'https://pcloud-pdf.你的帳號.workers.dev'
   pdfProxy: 'https://pcloud-pdf.sunny-f0b.workers.dev',
-  version: 'v1.3.1',
+  pdfProxyMaxBytes: 480 * 1024 * 1024,
+  version: 'v1.4.0',
   updated: '2026-10-20'
 };
 
@@ -499,32 +504,58 @@ function cleanTitle(t) {
   return t.replace(/\[[^\]]*\]|【[^】]*】|《[^》]*檔》|\([^)]*\)|（[^）]*）/g, ' ').replace(/\s+/g, ' ').trim();
 }
 const KW = /(數位|数位|數碼|電子|电子)?(寫真書|寫真集|写真集|写真書|寫真|写真|photo ?book)/i;
+// 常見但不是人名的字
+const STOP = /日本版|台灣版|中文版|付費|免費|特裝版|完全版|精華版|珍愛收藏版|珍藏版|收藏版|豪華增量版|數位典藏|個人|首本|居家|實體|实体|大尺|初體驗|私拍|已壓縮|\b\d+(st|nd|rd|th)\b|\d+\s*P\b/gi;
+// 出版社、品牌前綴
+const PUBLISHER = /^(?:JVID|XIUREN|秀人網?|Valent|Rion|\d+F|乃木坂46|爆机少女|爆機少女)\s*[-–—]?\s*/i;
+// 日文新字體、簡體 → 繁體，讓「三上悠亜／三上悠亞」併成同一人
+const VARIANT = { '亜':'亞','瀬':'瀨','戸':'戶','桜':'櫻','沢':'澤','斎':'齋','辺':'邊','浜':'濱','恵':'惠','栄':'榮','竜':'龍','広':'廣','気':'氣','楽':'樂','薫':'薰','湾':'灣','写':'寫','极':'極','实':'實','体':'體' };
+const CJK2_4 = /^[㐀-鿿぀-ヿ]{2,4}$/;
 function autoName(title) {
-  const s = cleanTitle(title).replace(/日本版|台灣版|中文版|付費|免費|特裝版|完全版|精華版|\b\d+(st|nd|rd|th)\b|\d+\s*P\b/gi, ' ');
+  const s = cleanTitle(title).replace(STOP, ' ');
   let name = '';
   const m = s.match(KW);
   if (m && m.index > 0) {
-    const seg = s.slice(0, m.index).split(/[》」』\]】:：|｜\-–—_\s]+/).filter(Boolean);
-    name = seg[seg.length - 1] || '';
+    // 關鍵字前面的幾段裡，挑「最短的 2–4 字人名」，同長取後面那個
+    const segs = s.slice(0, m.index).split(/[《》「」『』\[\]【】:：|｜\-–—_\s，,、．.]+/).filter(Boolean);
+    // 先看本身就是純中日文 2–4 字的段落，沒有才看去掉英文後的
+    const pure = segs.map(x => x.replace(PUBLISHER, '')).filter(x => CJK2_4.test(x));
+    const cands = pure.length ? pure : segs.map(x => canon(x)).filter(x => CJK2_4.test(x));
+    if (cands.length) name = cands.reduce((a, c) => (c.length <= a.length ? c : a));
+    else name = segs[0] || '';
   }
   if (!name) {
     const s2 = s.replace(/《[^》]*》|「[^」]*」|『[^』]*』/g, ' ').trim();
     name = (s2.split(/\s+[-–—|｜]\s+|[:：]|\s{2,}/)[0] || '').trim();
-  }
-  // 「巫苡萱-天天和你在苡起」這種沒空白的分隔：挑出像人名的那段
-  if (/[-–—_]/.test(name)) {
-    const parts = name.split(/[-–—_]+/).map(x => x.trim()).filter(Boolean);
-    name = parts.find(x => /^[\u3400-\u9fff]{2,4}$/.test(x)) || parts[0] || name;
+    // 「巫苡萱-天天和你在苡起」這種沒空白的分隔：挑出第一段像人名的
+    if (/[-–—_]/.test(name)) {
+      const parts = name.split(/[-–—_]+/).map(x => x.trim()).filter(Boolean);
+      name = parts.find(x => CJK2_4.test(canon(x))) || parts[0] || name;
+    }
+    // 「樂樂 稀有三點全露」：取第一個詞
+    const first = name.split(/\s+/)[0];
+    if (first && /[㐀-鿿぀-ヿ]{2,}/.test(first)) name = first;
   }
   name = name.replace(/^[\s\-–—·・.,，]+|[\s\-–—·・.,，]+$/g, '');
   return canon(name) || cleanTitle(title) || title;
 }
-// 同一人不同寫法合併：「30F林襄」→ 林襄、「巫苡萱 Ava Wu」→ 巫苡萱
+// 標題裡所有可能是人名的段落
+function nameCands(title) {
+  return [...new Set(cleanTitle(title).replace(STOP, ' ').replace(KW, ' ')
+    .split(/[《》「」『』\[\]【】:：|｜\-–—_\s，,、．.]+/).map(x => canon(x)).filter(x => CJK2_4.test(x)))];
+}
+// 同一人不同寫法合併：「30F林襄」→ 林襄、「巫苡萱 Ava Wu」→ 巫苡萱、「倪暄＆曲羿」→ 倪暄、「痞幼1」→ 痞幼
 function canon(n) {
-  let s = String(n || '').trim();
-  s = s.replace(/^[0-9]+[A-Za-z]*\s*(?=[\u3400-\u9fff\u3040-\u30ff])/, '');
-  const cjk = s.match(/[\u3400-\u9fff\u3040-\u30ff]{2,}/g);
+  let s = String(n || '').trim().replace(/^\d+[.\s、]+/, '').replace(PUBLISHER, '');
+  // 「與你‧YURI」：‧ 後面是英文名就用英文名
+  const dot = s.split(/[‧·・]/);
+  if (dot.length > 1 && /^[A-Za-z][A-Za-z\s]*$/.test(dot[dot.length - 1].trim())) s = dot[dot.length - 1].trim();
+  s = s.split(/\s*[＆&、]\s*|(?<=[㐀-鿿])\s*[xX×]\s*(?=[㐀-鿿A-Za-z])/)[0];
+  s = s.replace(/^[0-9]+[A-Za-z]*\s*(?=[㐀-鿿぀-ヿ])/, '');
+  const cjk = s.match(/[㐀-鿿぀-ヿ]{2,}/g);
   if (cjk && /[A-Za-z]/.test(s)) s = cjk[0];
+  s = s.replace(/\s*\d+$/, '');
+  s = s.replace(/[亜瀬戸桜沢斎辺浜恵栄竜広気楽薫湾写极实体]/g, c => VARIANT[c]);
   return s.trim();
 }
 const SEP = /\s+[-–—－]\s+/;
@@ -532,8 +563,11 @@ const SEP = /\s+[-–—－]\s+/;
 function splitTitle(t) {
   const parts = t.split(SEP);
   if (parts.length < 2) return null;
-  const name = cleanTitle(parts[0]) || parts[0].trim();
-  return name ? { name, work: parts.slice(1).join(' - ').trim() } : null;
+  let name = cleanTitle(parts[0]) || parts[0].trim();
+  const work = parts.slice(1).join(' - ').trim();
+  // 「JVID - 樂樂」：前面是品牌，人名在後面
+  if (!name.replace(PUBLISHER, '').trim()) name = autoName(work);
+  return name ? { name, work } : null;
 }
 function nameOf(title, folderName) {
   const sp = splitTitle(title)?.name;
@@ -592,7 +626,25 @@ function buildWorks(meta) {
     else { const acc = empty(); acc[k].push(c); add(c.name.replace(/\.[^.]+$/, ''), c, acc); }
   }
   if (rootImgs.img.length) add(meta.name, meta, rootImgs);
+  mergeNames(works);
   return works;
+}
+// 「艾融化你」含有已存在的人名「艾融」→ 歸到艾融（只處理自動判斷的人名）
+function mergeNames(works) {
+  const count = new Map();
+  works.forEach(w => count.set(w.name, (count.get(w.name) || 0) + 1));
+  // 標題裡如果出現別部作品已經用的人名，就歸到那個人（例：「襄水-林襄MIZUKI」→ 林襄）
+  for (const w of works) {
+    if (w.person || overrideFor(w.title) || count.get(w.name) > 1) continue;
+    const known = nameCands(w.title).find(x => x !== w.name && count.get(x));
+    if (known) { count.set(w.name, count.get(w.name) - 1); w.name = known; count.set(known, count.get(known) + 1); }
+  }
+  const names = [...count.keys()].filter(n => count.get(n) > 0);
+  for (const w of works) {
+    if (w.person || overrideFor(w.title)) continue;
+    const hits = names.filter(a => a !== w.name && a.length >= 2 && w.name.length > a.length && w.name.startsWith(a));
+    if (hits.length) w.name = hits.sort((x, y) => y.length - x.length)[0];
+  }
 }
 
 /* 依搜尋、排序整理出「人」的清單 */
@@ -672,6 +724,7 @@ function render() {
     return;
   }
   $('#btnBack').hidden = !S.person;
+  $('#btnMovePerson').hidden = !S.person;
   if (S.view === 'people' && !S.person) {
     $('#list').innerHTML = `<div class="grid">${shown.map(personCardHTML).join('')}</div>`;
     return;
@@ -698,7 +751,7 @@ function updateNameHint() {
   const n = Object.keys(localNames()).length;
   $('#nameHint').textContent = n
     ? `你在這台裝置改過 ${n} 個人名。按「匯出對照」複製後，貼到程式的 CONFIG.nameOverrides，其他裝置也會一樣。`
-    : '人名判斷錯誤時，在作品的三點選單選「設定人名」就能修正。';
+    : '人名判斷錯誤時，在作品的三點選單選「移動到其他人名」，或點進人名後按「合併」就能修正。';
 }
 function selectPerson(n, fromHistory) {
   const next = (S.person === n && !fromHistory) ? '' : n;
@@ -752,7 +805,7 @@ function kebabItems(w) {
   if (w.pdf.length || w.img.length) items.push(['ti-book-2', '翻閱電子書', () => openReader(w)]);
   if (w.vid.length) items.push(['ti-player-play', `播放影片（${w.vid.length}）`, () => openPlayer(w, 0)]);
   items.push(['ti-info-circle', '作品資訊', () => openInfo(w)]);
-  items.push(['ti-user-edit', '設定人名', () => openRename(w)]);
+  items.push(['ti-arrows-exchange', '移動到其他人名', () => openMove([w])]);
   items.push(['ti-download', w.folderid ? '下載整包 ZIP' : '下載檔案', () => download(w)]);
   items.push(['ti-copy', '複製雲端連結', copyLink]);
   items.push(['ti-external-link', '在 pCloud 開啟', () => window.open(S.link, '_blank', 'noopener')]);
@@ -800,34 +853,46 @@ function copyText(t, okMsg) {
 }
 const copyLink = () => copyText(S.link, '已複製雲端連結');
 
-/* ===================== 設定人名 ===================== */
-function openRename(w) {
-  const others = [...new Set(S.works.map(x => x.name))].filter(n => n !== w.name).sort(coll.compare).slice(0, 30);
-  const custom = !!localNames()[w.title];
-  openSheet(`<h3 class="sh-title">設定人名</h3>
-    <dl class="kv"><dt>資料夾</dt><dd>${esc(w.title)}</dd><dt>自動判斷</dt><dd>${esc(autoName(w.title))}</dd></dl>
-    <h4 class="sh-sub">人名</h4>
-    <input class="txt-in" id="renameIn" value="${esc(w.name)}" placeholder="輸入人名" autocomplete="off" enterkeyhint="done">
-    ${others.length ? `<h4 class="sh-sub">歸到已有的人名</h4><div class="namechips">${others.map(n => `<button class="chip" data-act="pick" data-n="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}
-    <div class="sh-actions">
-      <button class="btn primary" data-act="save"><i class="ti ti-check"></i>儲存</button>
-      ${custom ? '<button class="btn" data-act="reset"><i class="ti ti-arrow-back-up"></i>還原自動判斷</button>' : ''}
-    </div>`, (act, i, b) => {
-      const inp = $('#renameIn');
-      if (act === 'pick') { inp.value = b.dataset.n; inp.focus(); return; }
+/* ===================== 移動到其他人名 ===================== */
+// works：要移動的作品（單一作品，或整個人的所有作品）
+function openMove(works, fromName) {
+  const isPerson = works.length > 1 || !!fromName;
+  const current = fromName || works[0].name;
+  const counts = new Map();
+  S.works.forEach(x => counts.set(x.name, (counts.get(x.name) || 0) + 1));
+  const names = [...counts.keys()].filter(n => n !== current).sort(coll.compare);
+  const hasCustom = works.some(w => localNames()[w.title]);
+  const title = isPerson ? `把「${esc(current)}」的 ${works.length} 部作品移到…` : `移動「${esc(works[0].display)}」`;
+  openSheet(`<h3 class="sh-title">${title}</h3>
+    <dl class="kv"><dt>目前人名</dt><dd>${esc(current)}</dd>${isPerson ? '' : `<dt>資料夾</dt><dd>${esc(works[0].title)}</dd>`}</dl>
+    <h4 class="sh-sub">移到新的人名</h4>
+    <div class="row"><input class="txt-in" id="moveNew" placeholder="輸入人名" autocomplete="off" enterkeyhint="done"><button class="btn primary" data-act="new" style="flex:none"><i class="ti ti-check"></i>移動</button></div>
+    <h4 class="sh-sub">或選擇已有的人名（${names.length} 位）</h4>
+    <input class="txt-in" id="moveFilter" type="search" placeholder="搜尋人名" autocomplete="off" style="margin-bottom:6px">
+    <ul class="flist" id="moveList">${names.map(n => `<li data-n="${esc(n)}"><button data-act="pick" data-n="${esc(n)}"><span class="avatar sm">${initial(n)}</span><span>${esc(n)}</span><small>${counts.get(n)} 部</small></button></li>`).join('')}</ul>
+    ${hasCustom ? '<div class="sh-actions"><button class="btn" data-act="reset"><i class="ti ti-arrow-back-up"></i>還原自動判斷</button></div>' : ''}`,
+    (act, i, b) => {
+      let target = '';
+      if (act === 'pick') target = b.dataset.n;
+      else if (act === 'new') { target = $('#moveNew').value.trim(); if (!target) { toast('請輸入人名', 'err'); $('#moveNew').focus(); return; } }
       const o = localNames();
-      if (act === 'save') {
-        const v = inp.value.trim();
-        if (!v) { toast('請輸入人名', 'err'); return; }
-        o[w.title] = v;
-      } else if (act === 'reset') delete o[w.title];
+      if (act === 'reset') works.forEach(w => delete o[w.title]);
+      else if (target) works.forEach(w => { o[w.title] = target; });
+      else return;
       saveLocalNames(o);
-      S.works.forEach(x => { x.name = nameOf(x.title, x.person); });
-      closeSheet(); render(); updateNameHint();
-      toast(act === 'reset' ? '已還原自動判斷' : `已改為「${w.name}」`, 'ok');
+      S.works.forEach(x => { x.name = nameOf(x.title, x.person); }); mergeNames(S.works);
+      closeSheet();
+      if (S.person && !S.works.some(x => x.name === S.person)) S.person = act === 'reset' ? '' : target;
+      if (S.person) history.replaceState({ person: S.person }, '');
+      render(); updateNameHint();
+      toast(act === 'reset' ? '已還原自動判斷' : `已移到「${target}」`, 'ok');
     });
-  setTimeout(() => { if (!mqMobile.matches) $('#renameIn')?.select(); }, 320);
 }
+$('#sheetBody').addEventListener('input', e => {
+  if (e.target.id !== 'moveFilter') return;
+  const q = e.target.value.trim().toLowerCase();
+  document.querySelectorAll('#moveList li').forEach(li => { li.hidden = q && !li.dataset.n.toLowerCase().includes(q); });
+});
 
 /* ===================== Bottom Sheet ===================== */
 let sheetHandler = null;
@@ -846,7 +911,7 @@ $('#sheetBody').addEventListener('click', e => {
   if (b && sheetHandler) sheetHandler(b.dataset.act, +(b.dataset.i || 0), b);
 });
 $('#sheetBody').addEventListener('keydown', e => {
-  if (e.key === 'Enter' && e.target.id === 'renameIn') $('#sheetBody [data-act="save"]')?.click();
+  if (e.key === 'Enter' && e.target.id === 'moveNew') $('#sheetBody [data-act="new"]')?.click();
 });
 (() => {
   const sh = $('#sheet'), hd = $('#sheetHandle'); let y0 = null, dy = 0;
@@ -870,14 +935,14 @@ function openInfo(w) {
   html += `<div class="sh-actions">
     ${(w.pdf.length || w.img.length) ? '<button class="btn primary" data-act="read"><i class="ti ti-book-2"></i>翻閱</button>' : ''}
     ${w.vid.length ? '<button class="btn" data-act="play"><i class="ti ti-player-play"></i>播放</button>' : ''}
-    <button class="btn" data-act="name"><i class="ti ti-user-edit"></i>設定人名</button>
+    <button class="btn" data-act="name"><i class="ti ti-arrows-exchange"></i>移動</button>
     <button class="btn" data-act="dl"><i class="ti ti-download"></i>下載</button></div>`;
   openSheet(html, (act, i) => {
     if (act === 'read') openReader(w);
     else if (act === 'pdf') openReader(w, (w.img.length ? 1 : 0) + i);
     else if (act === 'play') openPlayer(w, 0);
     else if (act === 'vid') openPlayer(w, i);
-    else if (act === 'name') { closeReader(); closePlayer(); openRename(w); }
+    else if (act === 'name') { closeReader(); closePlayer(); openMove([w]); }
     else if (act === 'dl') { closeSheet(); download(w); }
   });
 }
@@ -909,7 +974,7 @@ function closeReader() {
   R.src = null; $('#stage').innerHTML = '';
   $('#reader').classList.remove('open'); syncLock();
 }
-const proxyUrl = f => `${CONFIG.pdfProxy.replace(/\/$/, '')}/?${new URLSearchParams({ code: S.code, fileid: f.fileid, api: S.api.includes('eapi') ? 'eu' : 'us' })}`;
+const proxyUrl = f => `${CONFIG.pdfProxy.replace(/\/$/, '')}/?${new URLSearchParams({ code: S.code, fileid: f.fileid, api: S.api.includes('eapi') ? 'eu' : 'us', v: 3 })}`;
 let pdfReady = null;
 function ensurePdfJs() {
   if (window.pdfjsLib) return Promise.resolve();
@@ -926,7 +991,7 @@ async function loadSource(src) {
   if (R.pdf) { R.pdf.destroy(); R.pdf = null; }
   R.src = src; R.done.clear(); R.busy.clear(); R.hq = false; R.pdfUrl = '';
   $('#btnHQ').classList.remove('on'); $('#btnHQ').hidden = src.type !== 'img';
-  $('#btnROpen').hidden = src.type !== 'pdf' || !!CONFIG.pdfProxy;
+  $('#btnROpen').hidden = true;
   $('#rbar').hidden = src.type !== 'img';
   const stage = $('#stage');
   stage.innerHTML = '<div class="loading"><div class="spinner"></div><p>載入中…</p></div>';
@@ -937,7 +1002,8 @@ async function loadSource(src) {
       return;
     }
     // PDF 有設定中轉站：用 PDF.js 做成翻頁電子書
-    if (CONFIG.pdfProxy) {
+    // pCloud 對約 500MB 以上的檔案不支援分段讀取，這種大檔直接開啟
+    if (CONFIG.pdfProxy && (src.file.size || 0) < CONFIG.pdfProxyMaxBytes) try {
       await ensurePdfJs();
       const url = proxyUrl(src.file);
       const doc = await pdfjsLib.getDocument({ url, disableAutoFetch: true, rangeChunkSize: 1 << 20 }).promise;
@@ -948,6 +1014,10 @@ async function loadSource(src) {
       $('#rbar').hidden = false;
       buildFlip(0);
       return;
+    } catch (e) {
+      console.warn('PDF 中轉失敗，改用直接開啟', e);
+      if (R.src !== src) return;
+      if (R.pdf) { R.pdf.destroy(); R.pdf = null; }
     }
     // 沒有中轉站：電腦用瀏覽器內建檢視器，手機交給系統開啟
     const url = await fileLink(src.file);
@@ -958,6 +1028,7 @@ async function loadSource(src) {
     stage.innerHTML = canInline
       ? `<iframe class="pdfframe" src="${esc(url)}" referrerpolicy="no-referrer" title="${esc(src.file.name)}"></iframe>`
       : `<div class="loading pdfcard"><i class="ti ti-file-type-pdf"></i><p>${esc(src.file.name)}</p><small>${fmtSize(src.file.size)}</small>
+         ${(src.file.size || 0) >= CONFIG.pdfProxyMaxBytes ? '<div class="warn">這本 PDF 超過 480MB，pCloud 不支援分段讀取，沒辦法翻頁。點下面按鈕直接開啟，檔案很大，請用 Wi-Fi。</div>' : ''}
          ${inApp ? '<div class="warn">你現在是在 App 內建的瀏覽器（LINE、Facebook 等），這類瀏覽器打不開 PDF。請點右上角選單，選「用預設瀏覽器開啟」，改用 Chrome 或 Safari 再試一次。</div>' : ''}
          <a class="btn primary" href="${esc(url)}" target="_blank" rel="noreferrer noopener"><i class="ti ti-external-link"></i>開啟 PDF</a>
          <a class="btn" href="${esc(S.link)}" target="_blank" rel="noopener"><i class="ti ti-cloud"></i>改到 pCloud 觀看</a>
@@ -1115,6 +1186,7 @@ $('#list').addEventListener('click', e => {
   if (card) openWork(S.byId.get(card.dataset.id));
 });
 $('#btnBack').onclick = () => selectPerson('');
+$('#btnMovePerson').onclick = () => { const ws = S.works.filter(w => w.name === S.person); if (ws.length) openMove(ws, S.person); };
 $('#list').addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.classList.contains('card')) openWork(S.byId.get(e.target.dataset.id));
   if (e.key === 'Enter' && e.target.classList.contains('pcard')) selectPerson(e.target.dataset.person);
@@ -1161,7 +1233,7 @@ $('#btnExportNames').onclick = () => {
 $('#btnClearNames').onclick = () => {
   if (!Object.keys(localNames()).length) { toast('目前沒有自訂的人名'); return; }
   if (!confirm('把這台裝置上自訂的人名全部還原成自動判斷？')) return;
-  saveLocalNames({}); S.works.forEach(x => { x.name = nameOf(x.title, x.person); }); render(); updateNameHint();
+  saveLocalNames({}); S.works.forEach(x => { x.name = nameOf(x.title, x.person); }); mergeNames(S.works); render(); updateNameHint();
   toast('已全部還原', 'ok');
 };
 $('#btnReload').onclick = () => {
