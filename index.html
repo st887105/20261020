@@ -400,7 +400,9 @@ const CONFIG = {
   shareLink: 'https://e.pcloud.link/publink/show?code=kZQFzX7Z6lm7KwCuop5tnJBTjFP62VbsU2sk',
   siteTitle: '我的電子書房',
   // 不顯示的檔案
-  exclude: /掃毒證明|簡介|說明|readme|\.(rtf|txt|nfo|url|db|ini|ds_store)$/i,
+  exclude: /掃毒證明|簡介|說明|readme|\.(rtf|txt|nfo|url|db|ini|ds_store|rar|zip|7z)$/i,
+  // 不顯示的資料夾或檔案（外流私密影像、私人照片、個人文件），就算放進雲端也不會出現在書房
+  hide: /性愛|自拍|破解|流出|外流|偷拍|偷窺|私密影|我妹|^女友$|Estatement|對帳單|年終獎金|機密|^待你處理$|^重複備份$/i,
   // 固定的人名對照：'作品資料夾原名': '人名'
   // 在網頁上用「設定人名」改過後，選單 →「匯出對照」可複製一份貼到這裡，所有裝置就會一致
   nameOverrides: {},
@@ -410,8 +412,8 @@ const CONFIG = {
   // 例：'https://pcloud-pdf.你的帳號.workers.dev'
   pdfProxy: 'https://pcloud-pdf.sunny-f0b.workers.dev',
   pdfProxyMaxBytes: 480 * 1024 * 1024,
-  version: 'v1.4.0',
-  updated: '2026-10-20'
+  version: 'v1.5.0',
+  updated: '2026-10-21'
 };
 
 /* ===================== 工具 ===================== */
@@ -495,6 +497,7 @@ function kind(f) {
 }
 function collect(node, acc) {
   for (const c of node.contents || []) {
+    if (CONFIG.hide.test(c.name) || c.name === '.thumb.stogram') continue;
     if (c.isfolder) collect(c, acc);
     else if (!CONFIG.exclude.test(c.name)) { const k = kind(c); if (k) acc[k].push(c); }
   }
@@ -605,18 +608,25 @@ function buildWorks(meta) {
   }
   const rootImgs = empty();
   for (const c of meta.contents || []) {
+    if (CONFIG.hide.test(c.name)) continue;
     if (c.isfolder) {
       const kids = (c.contents || []).filter(x => x.isfolder);
-      const isPerson = kids.some(x => splitTitle(x.name)?.name === c.name.trim());
+      const isPerson = (c.contents || []).some(x => splitTitle(x.name.replace(/\.[^.]+$/, ''))?.name === c.name.trim());
       const isContainer = CONFIG.containers.includes(c.name.trim());
       if (isPerson || isContainer) {
         // 人名資料夾：裡面每個子資料夾是一部作品；直接放在裡面的檔案歸成「其他」
         const loose = empty();
+        const who = isPerson ? c.name.trim() : '';
         for (const x of c.contents || []) {
-          if (x.isfolder) add(x.name, x, collect(x, empty()), isPerson ? c.name.trim() : '');
-          else if (!CONFIG.exclude.test(x.name)) { const k = kind(x); if (k) loose[k].push(x); }
+          if (CONFIG.hide.test(x.name)) continue;
+          if (x.isfolder) { add(x.name, x, collect(x, empty()), who); continue; }
+          if (CONFIG.exclude.test(x.name)) continue;
+          const k = kind(x); if (!k) continue;
+          // PDF、影片：每個檔案各自是一部作品；零散圖片合成一本
+          if (k === 'img') loose.img.push(x);
+          else { const acc = empty(); acc[k].push(x); add(x.name.replace(/\.[^.]+$/, ''), x, acc, who); }
         }
-        if (loose.img.length + loose.pdf.length + loose.vid.length) add(c.name + ' - 其他', c, loose, isPerson ? c.name.trim() : '');
+        if (loose.img.length) add(c.name + ' - 其他', c, loose, who);
       } else add(c.name, c, collect(c, empty()));
       continue;
     }
