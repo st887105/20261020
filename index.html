@@ -3,16 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e1014">
+<meta name="referrer" content="no-referrer">
 <title>我的電子書房</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
 <style>
 :root{
   --bg:#0e1014;--panel:#161920;--card:#1c2029;--card2:#242935;--line:#2b303c;
   --text:#eceef3;--muted:#9aa3b4;--faint:#6b7385;
-  --accent:#ff8a65;--accent-ink:#2a120a;--blue:#6ea8ff;--danger:#ff6b6b;--ok:#4cd39b;
-  --radius:14px;--shadow:0 12px 40px rgba(0,0,0,.5);--top:62px;
+  --accent:#ff8a65;--accent-ink:#2a120a;--danger:#ff6b6b;
+  --radius:14px;--shadow:0 12px 40px rgba(0,0,0,.5);--top:60px;--side:250px;
 }
-*{box-sizing:border-box}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI","Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;-webkit-font-smoothing:antialiased}
 body.lock{overflow:hidden}
 button{font:inherit;color:inherit;background:none;border:0;cursor:pointer;padding:0}
@@ -20,123 +23,151 @@ input,select{font:inherit;color:inherit}
 .icon-btn{width:40px;height:40px;border-radius:10px;display:inline-grid;place-items:center;font-size:22px;flex:none}
 .icon-btn:hover,.icon-btn.on{background:var(--card2)}
 .icon-btn.on{color:var(--accent)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 14px;border-radius:10px;background:var(--card2);border:1px solid var(--line);font-size:14px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:10px 14px;border-radius:10px;background:var(--card2);border:1px solid var(--line);font-size:14px}
 .btn:hover{border-color:var(--faint)}
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
 .btn .ti{font-size:18px}
+.avatar{width:34px;height:34px;border-radius:50%;background:rgba(255,138,101,.16);color:var(--accent);display:grid;place-items:center;font-weight:700;flex:none;font-size:14px}
+.avatar.sm{width:28px;height:28px;font-size:12px}
 
-/* 頂部列 */
-.topbar{position:sticky;top:0;z-index:20;height:var(--top);display:flex;align-items:center;gap:12px;padding:0 16px;background:rgba(14,16,20,.88);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+/* ===== 頂部列 ===== */
+.topbar{position:sticky;top:0;z-index:30;height:var(--top);display:flex;align-items:center;gap:10px;padding:0 16px;padding-left:max(16px,env(safe-area-inset-left));padding-right:max(16px,env(safe-area-inset-right));background:rgba(14,16,20,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
 .brand .logo{width:34px;height:34px;border-radius:10px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:20px;flex:none}
 .brand b{display:block;font-size:16px;white-space:nowrap}
-.brand small{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
-.search{flex:1;max-width:420px;margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:0 10px;height:40px}
+.brand small{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px}
+.search{flex:1;max-width:440px;margin-left:auto;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:0 10px;height:40px}
 .search .ti{color:var(--faint);font-size:18px}
-.search input{flex:1;min-width:0;background:none;border:0;outline:0;font-size:14px}
-@media(max-width:560px){.brand small{display:none}.brand b{font-size:15px}}
+.search input{flex:1;min-width:0;background:none;border:0;outline:0;font-size:15px}
+.search input::-webkit-search-cancel-button{display:none}
+#btnSearch,#btnSearchClose{display:none}
 
-main{max-width:1280px;margin:0 auto;padding:16px 16px 40px}
-.stats{color:var(--muted);font-size:13px;margin:4px 2px 14px;min-height:18px}
+/* ===== 人名選項：手機橫向捲動標籤 ===== */
+.chips{position:sticky;top:var(--top);z-index:20;display:none;gap:8px;overflow-x:auto;padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--line);scrollbar-width:none;scroll-snap-type:x proximity}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:999px;background:var(--card);border:1px solid var(--line);font-size:13px;white-space:nowrap;scroll-snap-align:start}
+.chip small{color:var(--faint);font-size:11px}
+.chip.on{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.chip.on small{color:var(--accent-ink)}
 
-/* Accordion 摺疊面板 */
-.acc{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin-bottom:12px;scroll-margin-top:calc(var(--top) + 12px)}
+/* ===== 版面：桌機左側人名欄 + 右側作品 ===== */
+.layout{display:grid;grid-template-columns:var(--side) minmax(0,1fr);gap:24px;max-width:1440px;margin:0 auto;padding:16px 20px 40px}
+.side{position:sticky;top:calc(var(--top) + 16px);align-self:start;max-height:calc(100vh - var(--top) - 32px);display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden}
+.side-h{display:flex;align-items:center;justify-content:space-between;padding:14px 16px 10px;font-size:13px;color:var(--muted)}
+.side-list{overflow:auto;padding:0 8px 10px}
+.pi{width:100%;display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;text-align:left;font-size:14px}
+.pi:hover{background:var(--card)}
+.pi.on{background:var(--card2);box-shadow:inset 3px 0 0 var(--accent)}
+.pi .pn{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pi small{color:var(--faint);font-size:12px}
+.pi .avatar.all{background:var(--card2);color:var(--text)}
+
+.toolbar{display:flex;align-items:center;gap:12px;margin:2px 0 14px;min-height:36px}
+.stats{flex:1;min-width:0;color:var(--muted);font-size:13px}
+.stats b{color:var(--text);font-weight:600}
+.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px;flex:none}
+.seg button{flex:1;padding:7px 10px;border-radius:7px;font-size:13px;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
+.seg button .ti{font-size:17px}
+.seg button.on{background:var(--card2);color:var(--text)}
+
+/* ===== 圖卡 ===== */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:16px}
+.card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s;outline:0;display:flex;flex-direction:column}
+@media(hover:hover){.card:hover{transform:translateY(-2px);border-color:var(--faint)}}
+.card:focus-visible{border-color:var(--accent)}
+.cover{position:relative;aspect-ratio:3/4;background:#11141a;display:grid;place-items:center;overflow:hidden}
+.cover img{width:100%;height:100%;object-fit:cover;display:block}
+.cover .ph{font-size:44px;color:var(--faint)}
+.bdgs{position:absolute;left:6px;bottom:6px;display:flex;gap:4px;flex-wrap:wrap}
+.bdg{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:2px 7px;border-radius:999px;background:rgba(0,0,0,.68);color:#fff}
+.bdg .ti{font-size:13px}
+.bdg.pdf{color:#ffb4a2}.bdg.vid{color:#9ec5ff}
+.cmeta{padding:9px 38px 10px 10px}
+.cname{display:block;font-size:12px;color:var(--accent);font-weight:600;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ctitle{font-size:13px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.csub{font-size:11px;color:var(--faint);margin-top:4px}
+.kebab{position:absolute;right:3px;bottom:5px;width:36px;height:36px;border-radius:9px;display:grid;place-items:center;font-size:20px;color:var(--muted)}
+.kebab:hover{background:var(--card2);color:var(--text)}
+
+/* ===== Accordion 分組檢視 ===== */
+.acc{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);margin-bottom:12px;scroll-margin-top:calc(var(--top) + 60px)}
 .acc-head{width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;text-align:left;border-radius:var(--radius)}
-.acc-head:hover{background:rgba(255,255,255,.02)}
-.acc-title b{display:block;font-size:16px}
+.acc-title{min-width:0}
+.acc-title b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .acc-title small{color:var(--muted);font-size:12px}
 .chev{margin-left:auto;font-size:20px;color:var(--muted);transition:transform .25s}
 .acc.open .chev{transform:rotate(180deg)}
 .acc-body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
 .acc.open .acc-body{grid-template-rows:1fr}
 .acc-inner{overflow:hidden}
-.avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,138,101,.16);color:var(--accent);display:grid;place-items:center;font-weight:700;flex:none}
-.avatar.sm{width:28px;height:28px;font-size:13px}
+.acc .grid{padding:2px 14px 16px}
 
-/* 圖卡 */
-.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;padding:4px 14px 16px}
-@media(max-width:420px){.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:4px 10px 12px}}
-.card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .15s,border-color .15s;outline:0}
-.card:hover,.card:focus-visible{transform:translateY(-2px);border-color:var(--faint)}
-.cover{position:relative;aspect-ratio:3/4;background:#11141a;display:grid;place-items:center;overflow:hidden}
-.cover img{width:100%;height:100%;object-fit:cover;display:block}
-.cover .ph{font-size:44px;color:var(--faint)}
-.bdgs{position:absolute;left:6px;bottom:6px;display:flex;gap:4px;flex-wrap:wrap}
-.bdg{display:inline-flex;align-items:center;gap:3px;font-size:11px;padding:2px 7px;border-radius:999px;background:rgba(0,0,0,.65);color:#fff}
-.bdg .ti{font-size:13px}
-.bdg.pdf{color:#ffb4a2}.bdg.vid{color:#9ec5ff}
-.cmeta{padding:8px 34px 10px 10px}
-.ctitle{font-size:13px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:35px}
-.csub{font-size:11px;color:var(--faint);margin-top:4px}
-.kebab{position:absolute;right:2px;bottom:6px;width:32px;height:32px;border-radius:8px;display:grid;place-items:center;font-size:20px;color:var(--muted)}
-.kebab:hover{background:var(--card2);color:var(--text)}
-
-/* Skeleton 骨架屏 */
+/* ===== Skeleton ===== */
 .sk{display:block;border-radius:8px;background:linear-gradient(90deg,#1b1f27 25%,#272c38 37%,#1b1f27 63%);background-size:400% 100%;animation:sh 1.3s ease infinite}
 @keyframes sh{0%{background-position:100% 0}100%{background-position:0 0}}
-.sk-av{width:36px;height:36px;border-radius:50%}
 .sk-line{height:12px;margin:8px 10px 0;width:80%}
-.sk-line.short{width:45%;margin-bottom:10px}
-.stats .sk-line{margin:0;display:inline-block}
+.sk-line.short{width:45%;margin-bottom:12px}
 .sk-card{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 .sk-cover{aspect-ratio:3/4;border-radius:0}
+.sk-pi{height:34px;margin:6px 8px;border-radius:10px}
+.sk-chip{width:72px;height:32px;border-radius:999px;flex:none}
 
 .empty{text-align:center;padding:60px 20px;color:var(--muted)}
 .empty .ti{font-size:52px;color:var(--faint)}
 .empty p{font-size:16px;color:var(--text)}
 .empty .btn{margin-top:14px}
+footer{text-align:center;color:var(--faint);font-size:12px;padding:0 16px 30px;padding-bottom:max(30px,env(safe-area-inset-bottom))}
 
-/* Hamburger 抽屜 */
+/* ===== Hamburger 抽屜 ===== */
 .drawer-ov{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:opacity .25s}
 .drawer-ov.open{opacity:1;pointer-events:auto}
-.drawer{position:absolute;top:0;right:0;bottom:0;width:min(340px,88vw);background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s ease}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:min(340px,88vw);background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .28s ease;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
 .drawer-ov.open .drawer{transform:none}
 .dr-head{display:flex;align-items:center;justify-content:space-between;padding:12px 12px 12px 18px;border-bottom:1px solid var(--line)}
 .dr-head b{font-size:16px}
+.dr-body{flex:1;overflow:auto}
 .dr-sec{padding:14px 18px;border-bottom:1px solid var(--line)}
 .dr-sec h4{margin:0 0 10px;font-size:12px;color:var(--muted);font-weight:500;letter-spacing:.04em}
-.seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px}
-.seg button{flex:1;padding:7px 4px;border-radius:7px;font-size:13px;color:var(--muted)}
-.seg button.on{background:var(--card2);color:var(--text)}
+.dr-sec p{margin:8px 0 0;font-size:12px;color:var(--faint);line-height:1.6}
+.dr-sec .seg{width:100%}
 .row{display:flex;gap:8px}
 .row .btn{flex:1}
-.name-index{flex:1;overflow:auto;padding:8px 10px}
-.ni{width:100%;display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;text-align:left;font-size:14px}
-.ni:hover{background:var(--card)}
-.ni span:nth-child(2){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ni small{color:var(--faint)}
-.link-in{width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:13px;outline:0;margin-bottom:8px}
+.link-in,.txt-in{width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;outline:0}
+.link-in{margin-bottom:8px;font-size:13px}
+.txt-in:focus,.link-in:focus{border-color:var(--accent)}
 
-/* Modal 彈出視窗 */
-.modal{position:fixed;inset:0;z-index:50;background:rgba(6,7,10,.92);display:none;align-items:center;justify-content:center}
+/* ===== Modal ===== */
+.modal{position:fixed;inset:0;z-index:50;background:#08090c;display:none}
 .modal.open{display:flex;animation:fade .2s ease}
 @keyframes fade{from{opacity:0}to{opacity:1}}
-.mbox{width:100%;height:100%;display:flex;flex-direction:column}
-.mtop{display:flex;align-items:center;gap:8px;padding:10px 12px;padding-top:max(10px,env(safe-area-inset-top))}
-.mtitle{flex:1;min-width:0;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:4px}
-.mtop select{max-width:38vw;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:13px}
-.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:8px}
+.mbox{width:100%;height:100vh;height:100dvh;display:flex;flex-direction:column}
+.mtop{display:flex;align-items:center;gap:6px;padding:8px 10px;padding-top:max(8px,env(safe-area-inset-top))}
+.mtitle{flex:1;min-width:0;font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:6px}
+.mtop select{max-width:34vw;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:13px}
+.stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px}
 .flipbox{margin:auto}
+.pdfframe{width:100%;height:100%;border:0;border-radius:8px;background:#fff}
+.pdfcard .ti{font-size:56px;color:var(--accent)}
+.pdfcard p{margin:0;color:var(--text);line-height:1.5}
+.pdfcard small{color:var(--muted)}
 .page{background:#0a0b0e;position:relative;overflow:hidden}
 .page>img,.page>canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
 .pg-ph{position:absolute;inset:0;display:grid;place-items:center}
 .pg-no{position:absolute;right:8px;bottom:6px;font-size:11px;color:rgba(255,255,255,.45);z-index:2}
-.rbar{display:flex;align-items:center;gap:10px;padding:10px 14px;padding-bottom:max(10px,env(safe-area-inset-bottom))}
-.rbar input[type=range]{flex:1;accent-color:var(--accent)}
-.pnum{font-size:13px;color:var(--muted);min-width:76px;text-align:center;font-variant-numeric:tabular-nums}
+.rbar{display:flex;align-items:center;gap:8px;padding:8px 12px;padding-bottom:max(10px,env(safe-area-inset-bottom))}
+.rbar input[type=range]{flex:1;min-width:0;accent-color:var(--accent);height:28px}
+.pnum{font-size:13px;color:var(--muted);min-width:72px;text-align:center;font-variant-numeric:tabular-nums}
 .loading{display:flex;flex-direction:column;align-items:center;gap:12px;color:var(--muted);text-align:center;padding:20px}
 .spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--accent);animation:spin .8s linear infinite}
 .spinner.sm{width:22px;height:22px;border-width:2px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* 影片播放器 */
+/* ===== 影片播放器 ===== */
 .pbody{flex:1;min-height:0;display:flex;gap:16px;padding:0 16px 16px;max-width:1400px;width:100%;margin:0 auto}
 .vwrap{flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:10px}
-.vwrap video{width:100%;max-height:calc(100vh - 150px);background:#000;border-radius:12px}
+.vwrap video{width:100%;max-height:calc(100dvh - 150px);background:#000;border-radius:12px}
 .pnow{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .plside{width:300px;flex:none;overflow:auto;margin:0;padding:0;list-style:none;align-self:stretch}
-@media(max-width:899px){.plside{display:none}.pbody{padding:0 0 12px}.vwrap video{border-radius:0}.pnow{padding:0 14px}}
-@media(min-width:900px){#btnPl{display:none}}
 .pl-item{width:100%;display:flex;align-items:center;gap:10px;padding:8px;border-radius:10px;text-align:left}
 .pl-item:hover{background:var(--card)}
 .pl-item.on{background:var(--card2);outline:1px solid var(--accent)}
@@ -144,83 +175,145 @@ main{max-width:1280px;margin:0 auto;padding:16px 16px 40px}
 .pl-item span{flex:1;min-width:0;font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .pl-item small{color:var(--faint);font-size:11px;flex:none}
 
-/* Bottom Sheet 底部面板 */
+/* ===== Bottom Sheet ===== */
 .sheet-ov{position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:opacity .25s}
 .sheet-ov.open{opacity:1;pointer-events:auto}
-.sheet{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:620px;max-height:82vh;background:var(--panel);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .3s ease;padding-bottom:env(safe-area-inset-bottom)}
+.sheet{position:absolute;left:0;right:0;bottom:0;margin:0 auto;max-width:620px;max-height:85dvh;background:var(--panel);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0;display:flex;flex-direction:column;transform:translateY(100%);transition:transform .3s ease;padding-bottom:env(safe-area-inset-bottom)}
 .sheet.dragging{transition:none}
 .sheet-ov.open .sheet{transform:none}
-.handle{padding:10px 0 6px;display:grid;place-items:center;cursor:grab;touch-action:none}
+.handle{padding:12px 0 8px;display:grid;place-items:center;cursor:grab;touch-action:none}
 .handle::before{content:"";width:42px;height:5px;border-radius:3px;background:var(--faint)}
-.sheet-body{overflow:auto;padding:4px 18px 20px}
-.sh-title{margin:4px 0 12px;font-size:17px;line-height:1.4}
+.sheet-body{overflow:auto;padding:2px 18px 20px;overscroll-behavior:contain}
+.sh-title{margin:2px 0 12px;font-size:17px;line-height:1.4}
 .sh-sub{margin:16px 0 8px;font-size:13px;color:var(--muted);font-weight:500}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:0;font-size:14px}
-.kv dt{color:var(--muted)}.kv dd{margin:0}
+.kv dt{color:var(--muted)}.kv dd{margin:0;word-break:break-word}
 .flist{list-style:none;margin:0;padding:0}
-.flist>li>button:not(.pl-item){width:100%;display:flex;align-items:center;gap:10px;padding:10px;border-radius:10px;text-align:left;font-size:14px}
+.flist>li>button:not(.pl-item){width:100%;display:flex;align-items:center;gap:12px;padding:12px 10px;border-radius:10px;text-align:left;font-size:15px}
 .flist>li>button:not(.pl-item):hover{background:var(--card)}
+.flist>li>button .ti{font-size:20px;color:var(--muted)}
 .flist span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .flist small{color:var(--faint)}
 .sh-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
 .sh-actions .btn{flex:1;min-width:110px}
+.namechips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
 
-/* Kebab 三點選單 */
+/* ===== Kebab（桌機浮動選單） ===== */
 .kmenu{position:fixed;z-index:90;min-width:200px;background:var(--card2);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:6px;display:none}
 .kmenu.open{display:block;animation:fade .12s ease}
 .kitem{width:100%;display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;font-size:14px;text-align:left}
 .kitem:hover{background:rgba(255,255,255,.06)}
 .kitem .ti{font-size:18px;color:var(--muted)}
 
-/* Toast 浮動通知 */
-.toasts{position:fixed;left:50%;bottom:max(24px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;width:max-content;max-width:92vw}
+/* ===== Toast ===== */
+.toasts{position:fixed;left:50%;bottom:max(24px,calc(env(safe-area-inset-bottom) + 12px));transform:translateX(-50%);z-index:100;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;width:max-content;max-width:92vw}
 .toast{display:flex;align-items:center;gap:8px;background:#f2f3f6;color:#15171c;padding:10px 16px;border-radius:12px;font-size:14px;box-shadow:var(--shadow);animation:tin .25s ease}
 .toast .ti{font-size:18px}
 .toast.ok .ti{color:#14945f}.toast.err .ti{color:#d63c3c}
 .toast.out{opacity:0;transform:translateY(8px);transition:.3s}
 @keyframes tin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 
-footer{text-align:center;color:var(--faint);font-size:12px;padding:10px 16px 30px}
+/* ===== 響應式 ===== */
+@media(max-width:1100px){:root{--side:220px}.grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}}
+@media(max-width:899px){
+  .layout{grid-template-columns:minmax(0,1fr);padding:12px 16px 32px}
+  .side{display:none}
+  .chips{display:flex}
+  .acc{scroll-margin-top:calc(var(--top) + 64px)}
+  .plside{display:none}.pbody{padding:0 0 12px}.vwrap video{border-radius:0}.pnow{padding:0 14px}
+}
+@media(min-width:900px){#btnPl{display:none}}
+@media(max-width:640px){
+  :root{--top:56px}
+  .topbar{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(8px,env(safe-area-inset-right));gap:4px}
+  .brand small{display:none}.brand b{font-size:15px}
+  .brand .logo{width:30px;height:30px;font-size:18px}
+  .search{display:none}
+  #btnSearch{display:inline-grid;margin-left:auto}
+  .topbar.searching .brand,.topbar.searching #btnSearch,.topbar.searching #btnMenu{display:none}
+  .topbar.searching .search{display:flex;max-width:none;margin-left:0}
+  .topbar.searching #btnSearchClose{display:inline-grid}
+  .chips{padding:8px 12px}
+  .layout{padding:10px 12px 28px}
+  .grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .acc .grid{padding:2px 10px 12px}
+  .cmeta{padding:8px 36px 9px 9px}
+  .seg button span{display:none}
+  .mtop .icon-btn{width:38px;height:38px}
+  .pnum{min-width:62px;font-size:12px}
+  .sheet{border-radius:18px 18px 0 0}
+}
+@media(min-width:641px) and (max-width:899px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 </style>
 </head>
 <body>
 
-<header class="topbar">
+<header class="topbar" id="topbar">
   <div class="brand">
     <div class="logo"><i class="ti ti-books"></i></div>
     <div style="min-width:0"><b id="siteTitle">我的電子書房</b><small id="folderName">讀取雲端資料夾中…</small></div>
   </div>
-  <label class="search"><i class="ti ti-search"></i><input id="q" type="search" placeholder="搜尋人名或作品" autocomplete="off"></label>
+  <label class="search"><i class="ti ti-search"></i><input id="q" type="search" placeholder="搜尋人名或作品" autocomplete="off" enterkeyhint="search"></label>
+  <button class="icon-btn" id="btnSearchClose" aria-label="關閉搜尋"><i class="ti ti-x"></i></button>
+  <button class="icon-btn" id="btnSearch" aria-label="搜尋"><i class="ti ti-search"></i></button>
   <button class="icon-btn" id="btnMenu" aria-label="開啟選單"><i class="ti ti-menu-2"></i></button>
 </header>
 
-<main>
-  <div class="stats" id="stats"></div>
-  <div id="list"></div>
-</main>
+<!-- 手機／平板：人名標籤列 -->
+<nav class="chips" id="chips" aria-label="人名"></nav>
+
+<div class="layout">
+  <!-- 桌機：左側人名欄 -->
+  <aside class="side" aria-label="人名">
+    <div class="side-h"><span>人名</span><span id="sideCount"></span></div>
+    <div class="side-list" id="sideList"></div>
+  </aside>
+  <main>
+    <div class="toolbar">
+      <div class="stats" id="stats"></div>
+      <div class="seg" id="viewSeg">
+        <button data-view="grid" title="全部圖卡"><i class="ti ti-layout-grid"></i><span>圖卡</span></button>
+        <button data-view="group" title="依人名分組"><i class="ti ti-layout-list"></i><span>分組</span></button>
+      </div>
+    </div>
+    <div id="list"></div>
+  </main>
+</div>
 <footer id="footer"></footer>
 
 <!-- Hamburger 抽屜選單 -->
 <div class="drawer-ov" id="drawerOv">
   <aside class="drawer" role="dialog" aria-label="選單">
-    <div class="dr-head"><b>人名索引</b><button class="icon-btn" id="btnCloseDrawer" aria-label="關閉"><i class="ti ti-x"></i></button></div>
-    <div class="dr-sec">
-      <h4>排序方式</h4>
-      <div class="seg" id="sortSeg">
-        <button data-sort="name-asc">人名 A→Z</button>
-        <button data-sort="name-desc">人名 Z→A</button>
-        <button data-sort="recent">最新更新</button>
+    <div class="dr-head"><b>選單</b><button class="icon-btn" id="btnCloseDrawer" aria-label="關閉"><i class="ti ti-x"></i></button></div>
+    <div class="dr-body">
+      <div class="dr-sec">
+        <h4>排序方式</h4>
+        <div class="seg" id="sortSeg">
+          <button data-sort="name-asc">人名 ↑</button>
+          <button data-sort="name-desc">人名 ↓</button>
+          <button data-sort="recent">最新</button>
+        </div>
       </div>
-      <div class="row" style="margin-top:10px">
-        <button class="btn" id="btnExpand"><i class="ti ti-arrows-maximize"></i>全部展開</button>
-        <button class="btn" id="btnCollapse"><i class="ti ti-arrows-minimize"></i>全部收合</button>
+      <div class="dr-sec">
+        <h4>分組檢視</h4>
+        <div class="row">
+          <button class="btn" id="btnExpand"><i class="ti ti-arrows-maximize"></i>全部展開</button>
+          <button class="btn" id="btnCollapse"><i class="ti ti-arrows-minimize"></i>全部收合</button>
+        </div>
       </div>
-    </div>
-    <nav class="name-index" id="nameIndex"></nav>
-    <div class="dr-sec" style="border-top:1px solid var(--line);border-bottom:0">
-      <h4>pCloud 公開連結</h4>
-      <input class="link-in" id="linkIn" type="url" placeholder="https://e.pcloud.link/publink/show?code=…">
-      <button class="btn primary" id="btnReload" style="width:100%"><i class="ti ti-refresh"></i>重新載入</button>
+      <div class="dr-sec">
+        <h4>人名對照</h4>
+        <div class="row">
+          <button class="btn" id="btnExportNames"><i class="ti ti-copy"></i>匯出對照</button>
+          <button class="btn" id="btnClearNames"><i class="ti ti-eraser"></i>全部還原</button>
+        </div>
+        <p id="nameHint"></p>
+      </div>
+      <div class="dr-sec" style="border-bottom:0">
+        <h4>pCloud 公開連結</h4>
+        <input class="link-in" id="linkIn" type="url" placeholder="https://e.pcloud.link/publink/show?code=…">
+        <button class="btn primary" id="btnReload" style="width:100%"><i class="ti ti-refresh"></i>重新載入</button>
+      </div>
     </div>
   </aside>
 </div>
@@ -231,12 +324,13 @@ footer{text-align:center;color:var(--faint);font-size:12px;padding:10px 16px 30p
     <div class="mtop">
       <div class="mtitle" id="rTitle"></div>
       <select id="srcSel" hidden aria-label="選擇版本"></select>
-      <button class="icon-btn" id="btnHQ" aria-label="高畫質原圖" title="高畫質原圖"><i class="ti ti-hd"></i></button>
+      <button class="icon-btn" id="btnROpen" aria-label="新分頁開啟" title="新分頁開啟" hidden><i class="ti ti-external-link"></i></button>
+      <button class="icon-btn" id="btnHQ" aria-label="高畫質原圖" title="高畫質原圖"><i class="ti ti-badge-hd"></i></button>
       <button class="icon-btn" id="btnRInfo" aria-label="作品資訊"><i class="ti ti-info-circle"></i></button>
       <button class="icon-btn" id="btnRClose" aria-label="關閉"><i class="ti ti-x"></i></button>
     </div>
     <div class="stage" id="stage"></div>
-    <div class="rbar">
+    <div class="rbar" id="rbar">
       <button class="icon-btn" id="btnPrev" aria-label="上一頁"><i class="ti ti-chevron-left"></i></button>
       <input type="range" id="pageRange" min="0" max="0" value="0" step="1" aria-label="跳頁">
       <span class="pnum" id="pageNum">0 / 0</span>
@@ -256,7 +350,7 @@ footer{text-align:center;color:var(--faint);font-size:12px;padding:10px 16px 30p
     </div>
     <div class="pbody">
       <div class="vwrap">
-        <video id="vid" controls playsinline preload="metadata"></video>
+        <video id="vid" controls playsinline preload="metadata" referrerpolicy="no-referrer"></video>
         <div class="pnow" id="pNow"></div>
       </div>
       <ol class="plside" id="plSide"></ol>
@@ -284,9 +378,10 @@ const CONFIG = {
   siteTitle: '我的電子書房',
   // 不顯示的檔案
   exclude: /掃毒證明|簡介|說明|readme|\.(rtf|txt|nfo|url|db|ini|ds_store)$/i,
-  // 人名自動判斷錯誤時手動指定：'作品資料夾原名': '人名'
+  // 固定的人名對照：'作品資料夾原名': '人名'
+  // 在網頁上用「設定人名」改過後，選單 →「匯出對照」可複製一份貼到這裡，所有裝置就會一致
   nameOverrides: {},
-  version: 'v1.0.0',
+  version: 'v1.1.1',
   updated: '2026-10-20'
 };
 
@@ -295,10 +390,11 @@ const $ = (s, r = document) => r.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const coll = new Intl.Collator('zh-Hant-TW', { numeric: true, sensitivity: 'base' });
 const RX = { img: /\.(jpe?g|png|webp|gif|bmp|avif)$/i, pdf: /\.pdf$/i, vid: /\.(mp4|m4v|mov|webm|mkv|avi|wmv|flv|ts|3gp|mpe?g)$/i };
-const S = { code: '', api: '', link: '', works: [], byId: new Map(), sort: 'name-asc', q: '', openSet: new Set(), linkCache: new Map() };
+const mqMobile = matchMedia('(max-width:640px)');
+const S = { code: '', api: '', link: '', works: [], byId: new Map(), sort: 'name-asc', view: 'grid', person: '', q: '', openSet: new Set(), linkCache: new Map(), loaded: false };
 
 function store(k, v) {
-  try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch (e) { return null; }
+  try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; }
 }
 function fmtSize(b) {
   if (!b) return '—';
@@ -314,6 +410,7 @@ function fmtDate(t) {
 function syncLock() {
   document.body.classList.toggle('lock', !!document.querySelector('.modal.open,.drawer-ov.open,.sheet-ov.open'));
 }
+const initial = n => esc([...(n || '?')][0]);
 
 /* ===================== Toast ===================== */
 function toast(msg, type = '') {
@@ -335,7 +432,7 @@ function parseLink(link) {
 }
 async function pc(method, params = {}) {
   const qs = new URLSearchParams({ code: S.code, ...params });
-  const r = await fetch(`${S.api}/${method}?${qs}`);
+  const r = await fetch(`${S.api}/${method}?${qs}`, { referrerPolicy: 'no-referrer' });
   const j = await r.json();
   if (j.result !== 0) throw new Error(j.error || `pCloud 錯誤碼 ${j.result}`);
   return j;
@@ -353,6 +450,11 @@ async function fileLink(f, dl = false) {
 }
 const zipUrl = w =>
   `${S.api}/getpubzip?${new URLSearchParams({ code: S.code, folderid: w.folderid, filename: (w.display || 'download') + '.zip', forcedownload: 1 })}`;
+
+/* ===================== 人名對照 ===================== */
+function localNames() { try { return JSON.parse(store('nameOverrides') || '{}') || {}; } catch (e) { return {}; } }
+function saveLocalNames(o) { store('nameOverrides', Object.keys(o).length ? JSON.stringify(o) : null); }
+function overrideFor(title) { return localNames()[title] || CONFIG.nameOverrides[title] || ''; }
 
 /* ===================== 資料整理 ===================== */
 function kind(f) {
@@ -373,9 +475,8 @@ function cleanTitle(t) {
   return t.replace(/\[[^\]]*\]|【[^】]*】|《[^》]*檔》|\([^)]*\)|（[^）]*）/g, ' ').replace(/\s+/g, ' ').trim();
 }
 const KW = /(數位|数位|數碼|電子|电子)?(寫真書|寫真集|写真集|写真書|寫真|写真|photo ?book)/i;
-function extractName(title) {
-  if (CONFIG.nameOverrides[title]) return CONFIG.nameOverrides[title];
-  const s = cleanTitle(title).replace(/日本版|台灣版|中文版|\b\d+(st|nd|rd|th)\b|\d+\s*P\b/gi, ' ');
+function autoName(title) {
+  const s = cleanTitle(title).replace(/日本版|台灣版|中文版|付費|免費|特裝版|完全版|精華版|\b\d+(st|nd|rd|th)\b|\d+\s*P\b/gi, ' ');
   let name = '';
   const m = s.match(KW);
   if (m && m.index > 0) {
@@ -389,6 +490,7 @@ function extractName(title) {
   name = name.replace(/^[\s\-–—·・.,，]+|[\s\-–—·・.,，]+$/g, '');
   return name || cleanTitle(title) || title;
 }
+const nameOf = title => overrideFor(title) || autoName(title);
 function medianRatio(files) {
   const r = files.filter(f => f.width && f.height).slice(0, 40).map(f => f.width / f.height).sort((a, b) => a - b);
   return r.length ? r[Math.floor(r.length / 2)] : 0.75;
@@ -401,7 +503,7 @@ function buildWorks(meta) {
     const all = [...acc.img, ...acc.pdf, ...acc.vid];
     if (!all.length) return;
     works.push({
-      id: 'w' + works.length, title, display: cleanTitle(title) || title, name: extractName(title),
+      id: 'w' + works.length, title, display: cleanTitle(title) || title, name: nameOf(title),
       folderid: node.isfolder ? node.folderid : null, file: node.isfolder ? null : node,
       img: acc.img, pdf: acc.pdf, vid: acc.vid,
       size: all.reduce((s, f) => s + (f.size || 0), 0),
@@ -426,7 +528,9 @@ function buildWorks(meta) {
   if (rootImgs.img.length) add(meta.name, meta, rootImgs);
   return works;
 }
-function getGroups() {
+
+/* 依搜尋、排序整理出「人」的清單 */
+function getPeople() {
   const q = S.q.trim().toLowerCase();
   const list = S.works.filter(w => !q || w.name.toLowerCase().includes(q) || w.title.toLowerCase().includes(q));
   const m = new Map();
@@ -442,13 +546,13 @@ function getGroups() {
 
 /* ===================== 畫面 ===================== */
 function showSkeleton() {
-  $('#stats').innerHTML = '<span class="sk sk-line" style="width:150px"></span>';
+  $('#stats').innerHTML = '<span class="sk sk-line" style="width:150px;margin:0;display:inline-block"></span>';
+  $('#sideList').innerHTML = '<span class="sk sk-pi"></span>'.repeat(8);
+  $('#chips').innerHTML = '<span class="sk sk-chip"></span>'.repeat(6);
   const card = '<div class="sk-card"><div class="sk sk-cover"></div><span class="sk sk-line"></span><span class="sk sk-line short"></span></div>';
-  $('#list').innerHTML = Array.from({ length: 3 }, () =>
-    `<section class="acc sk-acc"><div class="acc-head"><span class="sk sk-av"></span><span class="sk sk-line" style="width:120px;margin:0"></span></div>
-     <div class="grid">${card.repeat(6)}</div></section>`).join('');
+  $('#list').innerHTML = `<div class="grid">${card.repeat(12)}</div>`;
 }
-function cardHTML(w) {
+function cardHTML(w, showName) {
   const badges =
     (w.pdf.length ? `<span class="bdg pdf"><i class="ti ti-file-type-pdf"></i>PDF${w.pdf.length > 1 ? '×' + w.pdf.length : ''}</span>` : '') +
     (w.img.length ? `<span class="bdg"><i class="ti ti-book-2"></i>${w.img.length}P</span>` : '') +
@@ -459,39 +563,69 @@ function cardHTML(w) {
     : `<i class="ti ${icon} ph"></i>`;
   return `<article class="card" data-id="${w.id}" tabindex="0">
     <div class="cover">${cover}<div class="bdgs">${badges}</div></div>
-    <div class="cmeta"><div class="ctitle" title="${esc(w.title)}">${esc(w.display)}</div><div class="csub">${fmtSize(w.size)}</div></div>
+    <div class="cmeta">${showName ? `<span class="cname">${esc(w.name)}</span>` : ''}<div class="ctitle" title="${esc(w.title)}">${esc(w.display)}</div><div class="csub">${fmtSize(w.size)}</div></div>
     <button class="kebab" data-id="${w.id}" aria-label="更多選項"><i class="ti ti-dots-vertical"></i></button>
   </article>`;
 }
+function renderPeople(people) {
+  const total = people.reduce((s, p) => s + p.works.length, 0);
+  const isOn = n => S.person === n;
+  $('#sideCount').textContent = people.length + ' 位';
+  $('#sideList').innerHTML =
+    `<button class="pi ${isOn('') ? 'on' : ''}" data-name=""><span class="avatar sm all"><i class="ti ti-users"></i></span><span class="pn">全部</span><small>${total}</small></button>` +
+    people.map(p => `<button class="pi ${isOn(p.name) ? 'on' : ''}" data-name="${esc(p.name)}"><span class="avatar sm">${initial(p.name)}</span><span class="pn">${esc(p.name)}</span><small>${p.works.length}</small></button>`).join('');
+  $('#chips').innerHTML =
+    `<button class="chip ${isOn('') ? 'on' : ''}" data-name="">全部 <small>${total}</small></button>` +
+    people.map(p => `<button class="chip ${isOn(p.name) ? 'on' : ''}" data-name="${esc(p.name)}">${esc(p.name)} <small>${p.works.length}</small></button>`).join('');
+  $('#chips .chip.on')?.scrollIntoView({ inline: 'center', block: 'nearest' });
+}
 function render() {
-  const g = getGroups();
-  renderIndex(g);
-  const total = g.reduce((s, x) => s + x.works.length, 0);
-  $('#stats').textContent = S.q ? `搜尋「${S.q}」：${g.length} 位 · ${total} 部作品` : `共 ${g.length} 位 · ${total} 部作品`;
-  if (!g.length) {
+  let people = getPeople();
+  if (S.person && !people.some(p => p.name === S.person)) S.person = '';
+  renderPeople(people);
+  document.querySelectorAll('#sortSeg button').forEach(b => b.classList.toggle('on', b.dataset.sort === S.sort));
+  document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.view === S.view));
+  const shown = S.person ? people.filter(p => p.name === S.person) : people;
+  const count = shown.reduce((s, p) => s + p.works.length, 0);
+  const label = S.person ? `<b>${esc(S.person)}</b> · ${count} 部作品` : `共 <b>${people.length}</b> 位 · ${count} 部作品`;
+  $('#stats').innerHTML = (S.q ? `搜尋「${esc(S.q)}」：` : '') + label;
+  if (!shown.length) {
     $('#list').innerHTML = `<div class="empty"><i class="ti ti-mood-empty"></i><p>${S.q ? '找不到符合的人名或作品' : '這個資料夾裡沒有可顯示的 PDF、圖片或影片'}</p></div>`;
     return;
   }
-  $('#list').innerHTML = g.map(gr => {
+  if (S.view === 'grid' || S.person) {
+    let works = shown.flatMap(p => p.works);
+    if (S.sort === 'recent') works = works.slice().sort((a, b) => b.modified - a.modified);
+    $('#list').innerHTML = `<div class="grid">${works.map(w => cardHTML(w, !S.person)).join('')}</div>`;
+    return;
+  }
+  $('#list').innerHTML = shown.map(gr => {
     const open = S.q ? true : S.openSet.has(gr.name);
     return `<section class="acc ${open ? 'open' : ''}" data-name="${esc(gr.name)}">
       <button class="acc-head" aria-expanded="${open}">
-        <span class="avatar">${esc([...gr.name][0] || '?')}</span>
+        <span class="avatar">${initial(gr.name)}</span>
         <span class="acc-title"><b>${esc(gr.name)}</b><small>${gr.works.length} 部作品</small></span>
         <i class="ti ti-chevron-down chev"></i>
       </button>
-      <div class="acc-body"><div class="acc-inner"><div class="grid">${gr.works.map(cardHTML).join('')}</div></div></div>
+      <div class="acc-body"><div class="acc-inner"><div class="grid">${gr.works.map(w => cardHTML(w, false)).join('')}</div></div></div>
     </section>`;
   }).join('');
 }
-function renderIndex(g) {
-  $('#nameIndex').innerHTML = g.map(x =>
-    `<button class="ni" data-name="${esc(x.name)}"><span class="avatar sm">${esc([...x.name][0] || '?')}</span><span>${esc(x.name)}</span><small>${x.works.length}</small></button>`).join('');
-  document.querySelectorAll('#sortSeg button').forEach(b => b.classList.toggle('on', b.dataset.sort === S.sort));
+function updateNameHint() {
+  const n = Object.keys(localNames()).length;
+  $('#nameHint').textContent = n
+    ? `你在這台裝置改過 ${n} 個人名。按「匯出對照」複製後，貼到程式的 CONFIG.nameOverrides，其他裝置也會一樣。`
+    : '人名判斷錯誤時，在作品的三點選單選「設定人名」就能修正。';
+}
+function selectPerson(n) {
+  S.person = (S.person === n) ? '' : n;
+  render();
+  scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 /* ===================== 載入 ===================== */
 async function load() {
+  S.loaded = false;
   showSkeleton();
   $('#folderName').textContent = '讀取雲端資料夾中…';
   try {
@@ -502,13 +636,14 @@ async function load() {
     S.byId = new Map(S.works.map(w => [w.id, w]));
     $('#folderName').textContent = j.metadata.name || 'pCloud 資料夾';
     S.openSet = new Set();
-    const g = getGroups();
+    const g = getPeople();
     g.slice(0, g.length <= 12 ? g.length : 3).forEach(x => S.openSet.add(x.name));
-    render();
+    S.loaded = true;
+    render(); updateNameHint();
     toast(`已載入 ${g.length} 位、${S.works.length} 部作品`, 'ok');
   } catch (e) {
     console.error(e);
-    $('#stats').textContent = '';
+    $('#stats').textContent = ''; $('#sideList').innerHTML = ''; $('#chips').innerHTML = '';
     $('#folderName').textContent = '讀取失敗';
     $('#list').innerHTML = `<div class="empty"><i class="ti ti-cloud-off"></i><p>讀取雲端資料夾失敗</p><small>${esc(e.message)}</small><br><button class="btn primary" id="btnRetry"><i class="ti ti-refresh"></i>重試</button></div>`;
     $('#btnRetry').onclick = load;
@@ -516,18 +651,30 @@ async function load() {
   }
 }
 
-/* ===================== Kebab 三點選單 ===================== */
-let kOwner = null;
-function closeKebab() { $('#kmenu').classList.remove('open'); kOwner = null; }
-function toggleKebab(btn, w) {
-  if (kOwner === btn) return closeKebab();
+/* ===================== Kebab 三點選單（桌機浮動、手機改用底部面板） ===================== */
+function kebabItems(w) {
   const items = [];
   if (w.pdf.length || w.img.length) items.push(['ti-book-2', '翻閱電子書', () => openReader(w)]);
   if (w.vid.length) items.push(['ti-player-play', `播放影片（${w.vid.length}）`, () => openPlayer(w, 0)]);
   items.push(['ti-info-circle', '作品資訊', () => openInfo(w)]);
+  items.push(['ti-user-edit', '設定人名', () => openRename(w)]);
   items.push(['ti-download', w.folderid ? '下載整包 ZIP' : '下載檔案', () => download(w)]);
   items.push(['ti-copy', '複製雲端連結', copyLink]);
   items.push(['ti-external-link', '在 pCloud 開啟', () => window.open(S.link, '_blank', 'noopener')]);
+  return items;
+}
+let kOwner = null;
+function closeKebab() { $('#kmenu').classList.remove('open'); kOwner = null; }
+function toggleKebab(btn, w) {
+  const items = kebabItems(w);
+  if (mqMobile.matches) {
+    closeKebab();
+    openSheet(`<h3 class="sh-title">${esc(w.display)}</h3><ul class="flist">${items.map((it, i) =>
+      `<li><button data-act="k" data-i="${i}"><i class="ti ${it[0]}"></i><span>${it[1]}</span></button></li>`).join('')}</ul>`,
+      (act, i) => { closeSheet(); items[i][2](); });
+    return;
+  }
+  if (kOwner === btn) return closeKebab();
   const m = $('#kmenu');
   m.innerHTML = items.map((it, i) => `<button class="kitem" role="menuitem" data-i="${i}"><i class="ti ${it[0]}"></i>${it[1]}</button>`).join('');
   m._items = items;
@@ -547,13 +694,44 @@ $('#kmenu').addEventListener('click', e => {
 async function download(w) {
   try {
     const url = w.folderid ? zipUrl(w) : await fileLink(w.file, true);
-    const a = document.createElement('a'); a.href = url; a.rel = 'noopener'; a.target = '_blank';
+    const a = document.createElement('a'); a.href = url; a.rel = 'noreferrer noopener'; a.referrerPolicy = 'no-referrer'; a.target = '_blank';
     document.body.appendChild(a); a.click(); a.remove();
     toast('開始下載…');
   } catch (e) { toast('下載失敗：' + e.message, 'err'); }
 }
-function copyLink() {
-  navigator.clipboard?.writeText(S.link).then(() => toast('已複製雲端連結', 'ok'), () => toast('無法複製，請手動複製網址', 'err'));
+function copyText(t, okMsg) {
+  if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => toast(okMsg, 'ok'), () => toast('無法複製，請手動複製', 'err'));
+  else toast('這個瀏覽器不支援複製', 'err');
+}
+const copyLink = () => copyText(S.link, '已複製雲端連結');
+
+/* ===================== 設定人名 ===================== */
+function openRename(w) {
+  const others = [...new Set(S.works.map(x => x.name))].filter(n => n !== w.name).sort(coll.compare).slice(0, 30);
+  const custom = !!localNames()[w.title];
+  openSheet(`<h3 class="sh-title">設定人名</h3>
+    <dl class="kv"><dt>資料夾</dt><dd>${esc(w.title)}</dd><dt>自動判斷</dt><dd>${esc(autoName(w.title))}</dd></dl>
+    <h4 class="sh-sub">人名</h4>
+    <input class="txt-in" id="renameIn" value="${esc(w.name)}" placeholder="輸入人名" autocomplete="off" enterkeyhint="done">
+    ${others.length ? `<h4 class="sh-sub">歸到已有的人名</h4><div class="namechips">${others.map(n => `<button class="chip" data-act="pick" data-n="${esc(n)}">${esc(n)}</button>`).join('')}</div>` : ''}
+    <div class="sh-actions">
+      <button class="btn primary" data-act="save"><i class="ti ti-check"></i>儲存</button>
+      ${custom ? '<button class="btn" data-act="reset"><i class="ti ti-arrow-back-up"></i>還原自動判斷</button>' : ''}
+    </div>`, (act, i, b) => {
+      const inp = $('#renameIn');
+      if (act === 'pick') { inp.value = b.dataset.n; inp.focus(); return; }
+      const o = localNames();
+      if (act === 'save') {
+        const v = inp.value.trim();
+        if (!v) { toast('請輸入人名', 'err'); return; }
+        o[w.title] = v;
+      } else if (act === 'reset') delete o[w.title];
+      saveLocalNames(o);
+      S.works.forEach(x => { x.name = nameOf(x.title); });
+      closeSheet(); render(); updateNameHint();
+      toast(act === 'reset' ? '已還原自動判斷' : `已改為「${w.name}」`, 'ok');
+    });
+  setTimeout(() => { if (!mqMobile.matches) $('#renameIn')?.select(); }, 320);
 }
 
 /* ===================== Bottom Sheet ===================== */
@@ -570,7 +748,10 @@ function closeSheet() { $('#sheetOv').classList.remove('open'); sheetHandler = n
 $('#sheetOv').addEventListener('click', e => { if (e.target.id === 'sheetOv') closeSheet(); });
 $('#sheetBody').addEventListener('click', e => {
   const b = e.target.closest('[data-act]');
-  if (b && sheetHandler) sheetHandler(b.dataset.act, +(b.dataset.i || 0));
+  if (b && sheetHandler) sheetHandler(b.dataset.act, +(b.dataset.i || 0), b);
+});
+$('#sheetBody').addEventListener('keydown', e => {
+  if (e.key === 'Enter' && e.target.id === 'renameIn') $('#sheetBody [data-act="save"]')?.click();
 });
 (() => {
   const sh = $('#sheet'), hd = $('#sheetHandle'); let y0 = null, dy = 0;
@@ -594,29 +775,20 @@ function openInfo(w) {
   html += `<div class="sh-actions">
     ${(w.pdf.length || w.img.length) ? '<button class="btn primary" data-act="read"><i class="ti ti-book-2"></i>翻閱</button>' : ''}
     ${w.vid.length ? '<button class="btn" data-act="play"><i class="ti ti-player-play"></i>播放</button>' : ''}
+    <button class="btn" data-act="name"><i class="ti ti-user-edit"></i>設定人名</button>
     <button class="btn" data-act="dl"><i class="ti ti-download"></i>下載</button></div>`;
   openSheet(html, (act, i) => {
     if (act === 'read') openReader(w);
     else if (act === 'pdf') openReader(w, (w.img.length ? 1 : 0) + i);
     else if (act === 'play') openPlayer(w, 0);
     else if (act === 'vid') openPlayer(w, i);
+    else if (act === 'name') { closeReader(); closePlayer(); openRename(w); }
     else if (act === 'dl') { closeSheet(); download(w); }
   });
 }
 
 /* ===================== 電子書閱讀器（PageFlip + PDF.js） ===================== */
-const R = { pf: null, w: null, srcs: [], src: null, pages: [], ratio: .75, count: 0, ph: 0, pdf: null, hq: false, busy: new Set(), done: new Set() };
-let pdfReady = null;
-function ensurePdfJs() {
-  if (window.pdfjsLib) return Promise.resolve();
-  return pdfReady ||= new Promise((res, rej) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-    s.onload = () => { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; res(); };
-    s.onerror = () => { pdfReady = null; rej(new Error('PDF 閱讀元件載入失敗')); };
-    document.head.appendChild(s);
-  });
-}
+const R = { pf: null, w: null, srcs: [], src: null, pages: [], ratio: .75, count: 0, ph: 0, pdfUrl: '', hq: false, busy: new Set(), done: new Set() };
 function sourcesOf(w) {
   const s = [];
   if (w.img.length) s.push({ type: 'img', label: `圖片版（${w.img.length} 頁）`, files: w.img });
@@ -636,44 +808,45 @@ function openReader(w, idx) {
 }
 function destroyFlip() { try { R.pf && R.pf.destroy(); } catch (e) {} R.pf = null; }
 function closeReader() {
+  if (!$('#reader').classList.contains('open')) return;
   destroyFlip();
-  if (R.pdf) { R.pdf.destroy(); R.pdf = null; }
   R.src = null; $('#stage').innerHTML = '';
   $('#reader').classList.remove('open'); syncLock();
 }
 async function loadSource(src) {
   destroyFlip();
-  if (R.pdf) { R.pdf.destroy(); R.pdf = null; }
-  R.src = src; R.done.clear(); R.busy.clear(); R.hq = false;
+  R.src = src; R.done.clear(); R.busy.clear(); R.hq = false; R.pdfUrl = '';
   $('#btnHQ').classList.remove('on'); $('#btnHQ').hidden = src.type !== 'img';
+  $('#btnROpen').hidden = src.type !== 'pdf';
+  $('#rbar').hidden = src.type !== 'img';
   const stage = $('#stage');
   stage.innerHTML = '<div class="loading"><div class="spinner"></div><p>載入中…</p></div>';
   try {
-    if (src.type === 'img') { R.ratio = medianRatio(src.files); R.count = src.files.length; }
-    else {
-      await ensurePdfJs();
-      const url = await fileLink(src.file);
-      const doc = await pdfjsLib.getDocument({ url }).promise;
-      if (R.src !== src) { doc.destroy(); return; }
-      R.pdf = doc;
-      const vp = (await doc.getPage(1)).getViewport({ scale: 1 });
-      R.ratio = vp.width / vp.height; R.count = doc.numPages;
+    if (src.type === 'img') {
+      R.ratio = medianRatio(src.files); R.count = src.files.length;
+      buildFlip(0);
+      return;
     }
-    buildFlip(0);
+    // PDF：pCloud 檔案主機不允許跨網域讀取，改用瀏覽器內建 PDF 檢視器
+    const url = await fileLink(src.file);
+    if (R.src !== src) return;
+    R.pdfUrl = url;
+    const canInline = !mqMobile.matches && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    stage.innerHTML = canInline
+      ? `<iframe class="pdfframe" src="${esc(url)}" referrerpolicy="no-referrer" title="${esc(src.file.name)}"></iframe>`
+      : `<div class="loading pdfcard"><i class="ti ti-file-type-pdf"></i><p>${esc(src.file.name)}</p><small>${fmtSize(src.file.size)}</small>
+         <a class="btn primary" href="${esc(url)}" target="_blank" rel="noreferrer noopener"><i class="ti ti-external-link"></i>開啟 PDF</a>
+         <small>手機會用系統的 PDF 閱讀器開啟</small></div>`;
   } catch (err) {
     console.error(err);
     if (R.src !== src) return;
-    const isPdf = src.type === 'pdf';
-    stage.innerHTML = `<div class="loading"><i class="ti ti-alert-triangle" style="font-size:42px;color:var(--danger)"></i>
-      <p>${isPdf ? '這個 PDF 無法在網頁內翻閱（雲端主機可能不允許跨網域讀取）' : '載入失敗'}</p>
-      ${isPdf ? '<button class="btn primary" id="btnOpenPdf"><i class="ti ti-external-link"></i>改用新分頁開啟</button>' : ''}</div>`;
-    if (isPdf) $('#btnOpenPdf').onclick = () => fileLink(src.file).then(u => window.open(u, '_blank', 'noopener'));
+    stage.innerHTML = `<div class="loading"><i class="ti ti-alert-triangle" style="font-size:42px;color:var(--danger)"></i><p>載入失敗</p><small>${esc(err.message)}</small></div>`;
     toast('載入失敗：' + err.message, 'err');
   }
 }
 function buildFlip(start = 0) {
   const stage = $('#stage'); stage.innerHTML = '';
-  const aw = stage.clientWidth - 16, ah = stage.clientHeight - 16, r = R.ratio;
+  const aw = stage.clientWidth - 12, ah = stage.clientHeight - 12, r = R.ratio;
   const spread = R.count > 1 && aw > 700 && aw >= ah * r * 2 * 0.8;
   let ph = spread ? Math.min(ah, aw / 2 / r) : Math.min(ah, aw / r);
   const pw = Math.floor(ph * r); ph = Math.floor(ph); R.ph = ph;
@@ -691,7 +864,7 @@ function buildFlip(start = 0) {
   }
   R.pf = new St.PageFlip(box, {
     width: pw, height: ph, size: 'fixed', autoSize: false, showCover: spread, usePortrait: true,
-    mobileScrollSupport: false, maxShadowOpacity: .4, flippingTime: 600, startPage: start
+    mobileScrollSupport: false, maxShadowOpacity: .4, flippingTime: 600, startPage: start, swipeDistance: 20
   });
   R.pf.loadFromHTML(R.pages);
   R.pf.on('flip', e => onPage(e.data));
@@ -708,20 +881,10 @@ async function loadPage(j) {
   R.busy.add(j);
   const src = R.src, d = R.pages[j];
   try {
-    let el;
-    if (src.type === 'img') {
-      const f = src.files[j];
-      el = new Image(); el.alt = ''; el.decoding = 'async';
-      el.src = R.hq ? await fileLink(f) : thumb(f, '2048x1024');
-      await el.decode().catch(() => {});
-    } else {
-      const page = await R.pdf.getPage(j + 1);
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const vp = page.getViewport({ scale: R.ph * dpr / page.getViewport({ scale: 1 }).height });
-      el = document.createElement('canvas');
-      el.width = vp.width; el.height = vp.height;
-      await page.render({ canvasContext: el.getContext('2d'), viewport: vp }).promise;
-    }
+    const f = src.files[j];
+    const el = new Image(); el.alt = ''; el.decoding = 'async'; el.referrerPolicy = 'no-referrer';
+    el.src = R.hq ? await fileLink(f) : thumb(f, '2048x1024');
+    await el.decode().catch(() => {});
     if (src !== R.src || !d) return;
     d.querySelector('.pg-ph')?.remove();
     d.querySelector('img,canvas')?.remove();
@@ -739,13 +902,18 @@ $('#btnHQ').onclick = () => {
   if (R.pf) onPage(R.pf.getCurrentPageIndex());
   toast(R.hq ? '已切換高畫質原圖（載入較慢）' : '已切換一般畫質');
 };
+$('#btnROpen').onclick = () => { if (R.pdfUrl) { const a = document.createElement('a'); a.href = R.pdfUrl; a.target = '_blank'; a.rel = 'noreferrer noopener'; a.click(); } };
 $('#btnRInfo').onclick = () => R.w && openInfo(R.w);
 $('#btnRClose').onclick = closeReader;
-let rzT;
+let rzT, lastW = innerWidth, lastH = innerHeight;
 addEventListener('resize', () => {
   closeKebab();
   clearTimeout(rzT);
   rzT = setTimeout(() => {
+    // 手機捲動時網址列伸縮只會改高度一點點，不重建翻頁器
+    const dw = Math.abs(innerWidth - lastW), dh = Math.abs(innerHeight - lastH);
+    if (dw < 2 && dh < 120) return;
+    lastW = innerWidth; lastH = innerHeight;
     if (!$('#reader').classList.contains('open') || !R.pf) return;
     const cur = R.pf.getCurrentPageIndex();
     destroyFlip(); R.done.clear(); buildFlip(cur);
@@ -779,6 +947,7 @@ async function playAt(i) {
   catch (e) { toast('取得影片連結失敗：' + e.message, 'err'); }
 }
 function closePlayer() {
+  if (!$('#player').classList.contains('open')) return;
   vid.pause(); vid.removeAttribute('src'); vid.load();
   $('#player').classList.remove('open'); syncLock();
 }
@@ -789,7 +958,7 @@ $('#btnPl').onclick = () => openSheet(`<h3 class="sh-title">播放清單</h3><ul
 $('#btnPInfo').onclick = () => P.w && openInfo(P.w);
 $('#btnPClose').onclick = closePlayer;
 
-/* ===================== 主列表與選單事件 ===================== */
+/* ===================== 主畫面事件 ===================== */
 function openWork(w) {
   if (!w) return;
   if (w.pdf.length || w.img.length) openReader(w);
@@ -799,7 +968,7 @@ $('#list').addEventListener('click', e => {
   const kb = e.target.closest('.kebab');
   if (kb) { e.stopPropagation(); toggleKebab(kb, S.byId.get(kb.dataset.id)); return; }
   const head = e.target.closest('.acc-head');
-  if (head && !head.closest('.sk-acc')) {
+  if (head) {
     const sec = head.closest('.acc'), n = sec.dataset.name, open = !sec.classList.contains('open');
     sec.classList.toggle('open', open); head.setAttribute('aria-expanded', open);
     open ? S.openSet.add(n) : S.openSet.delete(n);
@@ -811,33 +980,55 @@ $('#list').addEventListener('click', e => {
 $('#list').addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.classList.contains('card')) openWork(S.byId.get(e.target.dataset.id));
 });
+['#sideList', '#chips'].forEach(sel => $(sel).addEventListener('click', e => {
+  const b = e.target.closest('[data-name]'); if (b && S.loaded) selectPerson(b.dataset.name);
+}));
+$('#viewSeg').addEventListener('click', e => {
+  const b = e.target.closest('[data-view]'); if (!b) return;
+  S.view = b.dataset.view; store('viewMode', S.view);
+  if (S.view === 'group' && S.person) S.person = '';
+  if (S.loaded) render();
+});
 document.addEventListener('click', e => { if (!e.target.closest('#kmenu') && !e.target.closest('.kebab')) closeKebab(); });
 addEventListener('scroll', closeKebab, { passive: true });
 
+/* 搜尋（手機收成放大鏡圖示） */
 let qT;
-$('#q').addEventListener('input', e => { clearTimeout(qT); qT = setTimeout(() => { S.q = e.target.value; if (S.works.length) render(); }, 150); });
+$('#q').addEventListener('input', e => { clearTimeout(qT); qT = setTimeout(() => { S.q = e.target.value; if (S.loaded) render(); }, 150); });
+$('#btnSearch').onclick = () => { $('#topbar').classList.add('searching'); $('#q').focus(); };
+function closeSearch() {
+  $('#topbar').classList.remove('searching');
+  if ($('#q').value) { $('#q').value = ''; S.q = ''; if (S.loaded) render(); }
+}
+$('#btnSearchClose').onclick = closeSearch;
 
-function openDrawer() { $('#linkIn').value = S.link; $('#drawerOv').classList.add('open'); syncLock(); }
+/* 漢堡選單 */
+function openDrawer() { $('#linkIn').value = S.link; updateNameHint(); $('#drawerOv').classList.add('open'); syncLock(); }
 function closeDrawer() { $('#drawerOv').classList.remove('open'); syncLock(); }
 $('#btnMenu').onclick = openDrawer;
 $('#btnCloseDrawer').onclick = closeDrawer;
 $('#drawerOv').addEventListener('click', e => { if (e.target.id === 'drawerOv') closeDrawer(); });
 $('#sortSeg').addEventListener('click', e => {
   const b = e.target.closest('[data-sort]'); if (!b) return;
-  S.sort = b.dataset.sort; store('sortMode', S.sort); render();
+  S.sort = b.dataset.sort; store('sortMode', S.sort); if (S.loaded) render();
 });
-$('#btnExpand').onclick = () => { getGroups().forEach(g => S.openSet.add(g.name)); render(); };
-$('#btnCollapse').onclick = () => { S.openSet.clear(); render(); };
-$('#nameIndex').addEventListener('click', e => {
-  const b = e.target.closest('.ni'); if (!b) return;
-  const n = b.dataset.name;
-  S.openSet.add(n); render(); closeDrawer();
-  setTimeout(() => document.querySelector(`.acc[data-name="${CSS.escape(n)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 60);
-});
+$('#btnExpand').onclick = () => { S.view = 'group'; S.person = ''; store('viewMode', 'group'); getPeople().forEach(g => S.openSet.add(g.name)); render(); closeDrawer(); };
+$('#btnCollapse').onclick = () => { S.view = 'group'; S.person = ''; store('viewMode', 'group'); S.openSet.clear(); render(); closeDrawer(); };
+$('#btnExportNames').onclick = () => {
+  const o = { ...CONFIG.nameOverrides, ...localNames() };
+  if (!Object.keys(o).length) { toast('目前沒有自訂的人名'); return; }
+  copyText(JSON.stringify(o, null, 2), '已複製，貼到 CONFIG.nameOverrides 即可');
+};
+$('#btnClearNames').onclick = () => {
+  if (!Object.keys(localNames()).length) { toast('目前沒有自訂的人名'); return; }
+  if (!confirm('把這台裝置上自訂的人名全部還原成自動判斷？')) return;
+  saveLocalNames({}); S.works.forEach(x => { x.name = nameOf(x.title); }); render(); updateNameHint();
+  toast('已全部還原', 'ok');
+};
 $('#btnReload').onclick = () => {
   const v = $('#linkIn').value.trim();
   try { parseLink(v); } catch (e) { toast('連結格式不正確：' + e.message, 'err'); return; }
-  S.link = v; store('pcloudLink', v); closeDrawer(); load();
+  S.link = v; S.person = ''; store('pcloudLink', v); closeDrawer(); load();
 };
 
 document.addEventListener('keydown', e => {
@@ -847,6 +1038,7 @@ document.addEventListener('keydown', e => {
     if ($('#reader').classList.contains('open')) return closeReader();
     if ($('#player').classList.contains('open')) return closePlayer();
     if ($('#drawerOv').classList.contains('open')) return closeDrawer();
+    if ($('#topbar').classList.contains('searching')) return closeSearch();
   }
   if ($('#reader').classList.contains('open') && !$('#sheetOv').classList.contains('open')) {
     if (e.key === 'ArrowRight') R.pf?.flipNext();
@@ -861,6 +1053,7 @@ document.addEventListener('keydown', e => {
   $('#footer').textContent = `${CONFIG.siteTitle} ${CONFIG.version} · 更新 ${CONFIG.updated}`;
   S.link = new URLSearchParams(location.search).get('link') || store('pcloudLink') || CONFIG.shareLink;
   S.sort = store('sortMode') || 'name-asc';
+  S.view = store('viewMode') || 'grid';
   if (!S.link) { openDrawer(); $('#list').innerHTML = '<div class="empty"><i class="ti ti-link"></i><p>在選單貼上 pCloud 公開資料夾連結</p></div>'; return; }
   load();
 })();
