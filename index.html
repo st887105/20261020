@@ -62,7 +62,20 @@ input,select{font:inherit;color:inherit}
 .pi small{color:var(--faint);font-size:12px}
 .pi .avatar.all{background:var(--card2);color:var(--text)}
 
-.toolbar{display:flex;align-items:center;gap:12px;margin:2px 0 14px;min-height:36px}
+.toolbar{display:flex;align-items:center;gap:10px;margin:2px 0 14px;min-height:36px}
+.back{display:inline-flex;align-items:center;gap:2px;padding:7px 10px 7px 6px;border-radius:10px;background:var(--card);border:1px solid var(--line);font-size:13px;flex:none}
+.back .ti{font-size:18px}
+/* 人名卡片 */
+.pcard{position:relative;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;cursor:pointer;outline:0;transition:transform .15s,border-color .15s}
+@media(hover:hover){.pcard:hover{transform:translateY(-2px);border-color:var(--faint)}}
+.pcard:focus-visible{border-color:var(--accent)}
+.pcover{position:relative;aspect-ratio:1/1;background:#11141a;display:grid;place-items:center;overflow:hidden}
+.pcover img{width:100%;height:100%;object-fit:cover;object-position:center 20%;display:block}
+.pcover .avatar{width:64px;height:64px;font-size:26px}
+.pcount{position:absolute;right:6px;top:6px;font-size:12px;padding:3px 9px;border-radius:999px;background:rgba(0,0,0,.7);color:#fff}
+.pmeta{padding:10px 12px 12px}
+.pmeta b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pmeta small{display:block;color:var(--faint);font-size:12px;margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stats{flex:1;min-width:0;color:var(--muted);font-size:13px}
 .stats b{color:var(--text);font-weight:600}
 .seg{display:flex;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:3px;flex:none}
@@ -147,9 +160,14 @@ footer{text-align:center;color:var(--faint);font-size:12px;padding:0 16px 30px;p
 .stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px}
 .flipbox{margin:auto}
 .pdfframe{width:100%;height:100%;border:0;border-radius:8px;background:#fff}
-.pdfcard .ti{font-size:56px;color:var(--accent)}
+.pdfcard>.ti{font-size:56px;color:var(--accent)}
+.pdfcard .btn{min-height:46px}
 .pdfcard p{margin:0;color:var(--text);line-height:1.5}
 .pdfcard small{color:var(--muted)}
+.pdfcard .btn{min-width:200px}
+a.btn{text-decoration:none;color:var(--text)}
+a.btn.primary{color:var(--accent-ink)}
+.pdfcard .warn{max-width:320px;font-size:13px;line-height:1.6;color:#ffcf9e;background:rgba(255,138,101,.12);border:1px solid rgba(255,138,101,.35);border-radius:10px;padding:10px 12px}
 .page{background:#0a0b0e;position:relative;overflow:hidden}
 .page>img,.page>canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;display:block}
 .pg-ph{position:absolute;inset:0;display:grid;place-items:center}
@@ -218,7 +236,6 @@ footer{text-align:center;color:var(--faint);font-size:12px;padding:0 16px 30px;p
 @media(max-width:899px){
   .layout{grid-template-columns:minmax(0,1fr);padding:12px 16px 32px}
   .side{display:none}
-  .chips{display:flex}
   .acc{scroll-margin-top:calc(var(--top) + 64px)}
   .plside{display:none}.pbody{padding:0 0 12px}.vwrap video{border-radius:0}.pnow{padding:0 14px}
 }
@@ -270,9 +287,11 @@ footer{text-align:center;color:var(--faint);font-size:12px;padding:0 16px 30px;p
   </aside>
   <main>
     <div class="toolbar">
+      <button class="back" id="btnBack" hidden><i class="ti ti-chevron-left"></i>人名</button>
       <div class="stats" id="stats"></div>
       <div class="seg" id="viewSeg">
-        <button data-view="grid" title="全部圖卡"><i class="ti ti-layout-grid"></i><span>圖卡</span></button>
+        <button data-view="people" title="人名卡片"><i class="ti ti-users"></i><span>人名</span></button>
+        <button data-view="grid" title="全部作品"><i class="ti ti-layout-grid"></i><span>作品</span></button>
         <button data-view="group" title="依人名分組"><i class="ti ti-layout-list"></i><span>分組</span></button>
       </div>
     </div>
@@ -383,7 +402,10 @@ const CONFIG = {
   nameOverrides: {},
   // 這些資料夾是「容器」，裡面每個子資料夾各自是一部作品
   containers: ['待確認', '合輯', '未分類'],
-  version: 'v1.2.0',
+  // PDF 中轉站（Cloudflare Worker 網址）。填了之後 PDF 會變成翻頁電子書，任何瀏覽器都能看
+  // 例：'https://pcloud-pdf.你的帳號.workers.dev'
+  pdfProxy: '',
+  version: 'v1.3.0',
   updated: '2026-10-20'
 };
 
@@ -489,8 +511,21 @@ function autoName(title) {
     const s2 = s.replace(/《[^》]*》|「[^」]*」|『[^』]*』/g, ' ').trim();
     name = (s2.split(/\s+[-–—|｜]\s+|[:：]|\s{2,}/)[0] || '').trim();
   }
+  // 「巫苡萱-天天和你在苡起」這種沒空白的分隔：挑出像人名的那段
+  if (/[-–—_]/.test(name)) {
+    const parts = name.split(/[-–—_]+/).map(x => x.trim()).filter(Boolean);
+    name = parts.find(x => /^[\u3400-\u9fff]{2,4}$/.test(x)) || parts[0] || name;
+  }
   name = name.replace(/^[\s\-–—·・.,，]+|[\s\-–—·・.,，]+$/g, '');
-  return name || cleanTitle(title) || title;
+  return canon(name) || cleanTitle(title) || title;
+}
+// 同一人不同寫法合併：「30F林襄」→ 林襄、「巫苡萱 Ava Wu」→ 巫苡萱
+function canon(n) {
+  let s = String(n || '').trim();
+  s = s.replace(/^[0-9]+[A-Za-z]*\s*(?=[\u3400-\u9fff\u3040-\u30ff])/, '');
+  const cjk = s.match(/[\u3400-\u9fff\u3040-\u30ff]{2,}/g);
+  if (cjk && /[A-Za-z]/.test(s)) s = cjk[0];
+  return s.trim();
 }
 const SEP = /\s+[-–—－]\s+/;
 // 「人名 - 作品名」格式
@@ -501,7 +536,8 @@ function splitTitle(t) {
   return name ? { name, work: parts.slice(1).join(' - ').trim() } : null;
 }
 function nameOf(title, folderName) {
-  return overrideFor(title) || folderName || splitTitle(title)?.name || autoName(title);
+  const sp = splitTitle(title)?.name;
+  return overrideFor(title) || folderName || (sp ? canon(sp) || sp : '') || autoName(title);
 }
 function displayOf(title) {
   const sp = splitTitle(title);
@@ -597,6 +633,18 @@ function cardHTML(w, showName) {
     <button class="kebab" data-id="${w.id}" aria-label="更多選項"><i class="ti ti-dots-vertical"></i></button>
   </article>`;
 }
+function personCardHTML(p) {
+  const c = p.works.find(w => w.cover);
+  const nImg = p.works.reduce((s, w) => s + (w.img.length ? 1 : 0), 0);
+  const nPdf = p.works.reduce((s, w) => s + w.pdf.length, 0);
+  const nVid = p.works.reduce((s, w) => s + w.vid.length, 0);
+  const sub = [nImg && `${nImg} 本圖片`, nPdf && `${nPdf} PDF`, nVid && `${nVid} 影片`].filter(Boolean).join(' · ');
+  return `<article class="pcard" data-person="${esc(p.name)}" tabindex="0">
+    <div class="pcover">${c ? `<img loading="lazy" src="${thumb(c.cover, '480x480')}" alt="" onerror="this.remove()">` : `<span class="avatar">${initial(p.name)}</span>`}
+      <span class="pcount">${p.works.length} 部</span></div>
+    <div class="pmeta"><b>${esc(p.name)}</b><small>${sub || '&nbsp;'}</small></div>
+  </article>`;
+}
 function renderPeople(people) {
   const total = people.reduce((s, p) => s + p.works.length, 0);
   const isOn = n => S.person === n;
@@ -623,6 +671,11 @@ function render() {
     $('#list').innerHTML = `<div class="empty"><i class="ti ti-mood-empty"></i><p>${S.q ? '找不到符合的人名或作品' : '這個資料夾裡沒有可顯示的 PDF、圖片或影片'}</p></div>`;
     return;
   }
+  $('#btnBack').hidden = !S.person;
+  if (S.view === 'people' && !S.person) {
+    $('#list').innerHTML = `<div class="grid">${shown.map(personCardHTML).join('')}</div>`;
+    return;
+  }
   if (S.view === 'grid' || S.person) {
     let works = shown.flatMap(p => p.works);
     if (S.sort === 'recent') works = works.slice().sort((a, b) => b.modified - a.modified);
@@ -647,11 +700,23 @@ function updateNameHint() {
     ? `你在這台裝置改過 ${n} 個人名。按「匯出對照」複製後，貼到程式的 CONFIG.nameOverrides，其他裝置也會一樣。`
     : '人名判斷錯誤時，在作品的三點選單選「設定人名」就能修正。';
 }
-function selectPerson(n) {
-  S.person = (S.person === n) ? '' : n;
+function selectPerson(n, fromHistory) {
+  const next = (S.person === n && !fromHistory) ? '' : n;
+  if (!fromHistory) {
+    if (next && !S.person) history.pushState({ person: next }, '');
+    else if (next) history.replaceState({ person: next }, '');
+    else if (history.state && history.state.person) { history.back(); return; }
+  }
+  S.person = next;
   render();
-  scrollTo({ top: 0, behavior: 'smooth' });
+  scrollTo({ top: 0 });
 }
+addEventListener('popstate', e => {
+  if ($('#reader').classList.contains('open')) closeReader();
+  if ($('#player').classList.contains('open')) closePlayer();
+  if ($('#sheetOv').classList.contains('open')) closeSheet();
+  selectPerson((e.state && e.state.person) || '', true);
+});
 
 /* ===================== 載入 ===================== */
 async function load() {
@@ -818,7 +883,7 @@ function openInfo(w) {
 }
 
 /* ===================== 電子書閱讀器（PageFlip + PDF.js） ===================== */
-const R = { pf: null, w: null, srcs: [], src: null, pages: [], ratio: .75, count: 0, ph: 0, pdfUrl: '', hq: false, busy: new Set(), done: new Set() };
+const R = { pf: null, w: null, srcs: [], src: null, pages: [], ratio: .75, count: 0, ph: 0, pdf: null, pdfUrl: '', hq: false, busy: new Set(), done: new Set() };
 function sourcesOf(w) {
   const s = [];
   if (w.img.length) s.push({ type: 'img', label: `圖片版（${w.img.length} 頁）`, files: w.img });
@@ -840,14 +905,28 @@ function destroyFlip() { try { R.pf && R.pf.destroy(); } catch (e) {} R.pf = nul
 function closeReader() {
   if (!$('#reader').classList.contains('open')) return;
   destroyFlip();
+  if (R.pdf) { R.pdf.destroy(); R.pdf = null; }
   R.src = null; $('#stage').innerHTML = '';
   $('#reader').classList.remove('open'); syncLock();
 }
+const proxyUrl = f => `${CONFIG.pdfProxy.replace(/\/$/, '')}/?${new URLSearchParams({ code: S.code, fileid: f.fileid, api: S.api.includes('eapi') ? 'eu' : 'us' })}`;
+let pdfReady = null;
+function ensurePdfJs() {
+  if (window.pdfjsLib) return Promise.resolve();
+  return pdfReady ||= new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = () => { pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'; res(); };
+    s.onerror = () => { pdfReady = null; rej(new Error('PDF 閱讀元件載入失敗')); };
+    document.head.appendChild(s);
+  });
+}
 async function loadSource(src) {
   destroyFlip();
+  if (R.pdf) { R.pdf.destroy(); R.pdf = null; }
   R.src = src; R.done.clear(); R.busy.clear(); R.hq = false; R.pdfUrl = '';
   $('#btnHQ').classList.remove('on'); $('#btnHQ').hidden = src.type !== 'img';
-  $('#btnROpen').hidden = src.type !== 'pdf';
+  $('#btnROpen').hidden = src.type !== 'pdf' || !!CONFIG.pdfProxy;
   $('#rbar').hidden = src.type !== 'img';
   const stage = $('#stage');
   stage.innerHTML = '<div class="loading"><div class="spinner"></div><p>載入中…</p></div>';
@@ -857,16 +936,32 @@ async function loadSource(src) {
       buildFlip(0);
       return;
     }
-    // PDF：pCloud 檔案主機不允許跨網域讀取，改用瀏覽器內建 PDF 檢視器
+    // PDF 有設定中轉站：用 PDF.js 做成翻頁電子書
+    if (CONFIG.pdfProxy) {
+      await ensurePdfJs();
+      const url = proxyUrl(src.file);
+      const doc = await pdfjsLib.getDocument({ url, disableAutoFetch: true, rangeChunkSize: 1 << 20 }).promise;
+      if (R.src !== src) { doc.destroy(); return; }
+      R.pdf = doc; R.pdfUrl = url;
+      const vp = (await doc.getPage(1)).getViewport({ scale: 1 });
+      R.ratio = vp.width / vp.height; R.count = doc.numPages;
+      $('#rbar').hidden = false;
+      buildFlip(0);
+      return;
+    }
+    // 沒有中轉站：電腦用瀏覽器內建檢視器，手機交給系統開啟
     const url = await fileLink(src.file);
     if (R.src !== src) return;
     R.pdfUrl = url;
-    const canInline = !mqMobile.matches && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    const inApp = /Line\/|FBAN|FBAV|FB_IAB|Instagram|MicroMessenger|; wv\)/i.test(navigator.userAgent);
+    const canInline = !inApp && !mqMobile.matches && !/Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     stage.innerHTML = canInline
       ? `<iframe class="pdfframe" src="${esc(url)}" referrerpolicy="no-referrer" title="${esc(src.file.name)}"></iframe>`
       : `<div class="loading pdfcard"><i class="ti ti-file-type-pdf"></i><p>${esc(src.file.name)}</p><small>${fmtSize(src.file.size)}</small>
+         ${inApp ? '<div class="warn">你現在是在 App 內建的瀏覽器（LINE、Facebook 等），這類瀏覽器打不開 PDF。請點右上角選單，選「用預設瀏覽器開啟」，改用 Chrome 或 Safari 再試一次。</div>' : ''}
          <a class="btn primary" href="${esc(url)}" target="_blank" rel="noreferrer noopener"><i class="ti ti-external-link"></i>開啟 PDF</a>
-         <small>手機會用系統的 PDF 閱讀器開啟</small></div>`;
+         <a class="btn" href="${esc(S.link)}" target="_blank" rel="noopener"><i class="ti ti-cloud"></i>改到 pCloud 觀看</a>
+         <small>連結約 1 小時後失效，失效請重新開啟這本</small></div>`;
   } catch (err) {
     console.error(err);
     if (R.src !== src) return;
@@ -911,10 +1006,20 @@ async function loadPage(j) {
   R.busy.add(j);
   const src = R.src, d = R.pages[j];
   try {
-    const f = src.files[j];
-    const el = new Image(); el.alt = ''; el.decoding = 'async'; el.referrerPolicy = 'no-referrer';
-    el.src = R.hq ? await fileLink(f) : thumb(f, '2048x1024');
-    await el.decode().catch(() => {});
+    let el;
+    if (src.type === 'img') {
+      const f = src.files[j];
+      el = new Image(); el.alt = ''; el.decoding = 'async'; el.referrerPolicy = 'no-referrer';
+      el.src = R.hq ? await fileLink(f) : thumb(f, '2048x1024');
+      await el.decode().catch(() => {});
+    } else {
+      const page = await R.pdf.getPage(j + 1);
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const vp = page.getViewport({ scale: R.ph * dpr / page.getViewport({ scale: 1 }).height });
+      el = document.createElement('canvas');
+      el.width = vp.width; el.height = vp.height;
+      await page.render({ canvasContext: el.getContext('2d'), viewport: vp }).promise;
+    }
     if (src !== R.src || !d) return;
     d.querySelector('.pg-ph')?.remove();
     d.querySelector('img,canvas')?.remove();
@@ -1004,19 +1109,23 @@ $('#list').addEventListener('click', e => {
     open ? S.openSet.add(n) : S.openSet.delete(n);
     return;
   }
+  const pc = e.target.closest('.pcard');
+  if (pc) { selectPerson(pc.dataset.person); return; }
   const card = e.target.closest('.card');
   if (card) openWork(S.byId.get(card.dataset.id));
 });
+$('#btnBack').onclick = () => selectPerson('');
 $('#list').addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.classList.contains('card')) openWork(S.byId.get(e.target.dataset.id));
+  if (e.key === 'Enter' && e.target.classList.contains('pcard')) selectPerson(e.target.dataset.person);
 });
 ['#sideList', '#chips'].forEach(sel => $(sel).addEventListener('click', e => {
   const b = e.target.closest('[data-name]'); if (b && S.loaded) selectPerson(b.dataset.name);
 }));
 $('#viewSeg').addEventListener('click', e => {
   const b = e.target.closest('[data-view]'); if (!b) return;
-  S.view = b.dataset.view; store('viewMode', S.view);
-  if (S.view === 'group' && S.person) S.person = '';
+  S.view = b.dataset.view; store('viewMode2', S.view);
+  if (S.person) { S.person = ''; if (history.state && history.state.person) history.replaceState(null, ''); }
   if (S.loaded) render();
 });
 document.addEventListener('click', e => { if (!e.target.closest('#kmenu') && !e.target.closest('.kebab')) closeKebab(); });
@@ -1042,8 +1151,8 @@ $('#sortSeg').addEventListener('click', e => {
   const b = e.target.closest('[data-sort]'); if (!b) return;
   S.sort = b.dataset.sort; store('sortMode', S.sort); if (S.loaded) render();
 });
-$('#btnExpand').onclick = () => { S.view = 'group'; S.person = ''; store('viewMode', 'group'); getPeople().forEach(g => S.openSet.add(g.name)); render(); closeDrawer(); };
-$('#btnCollapse').onclick = () => { S.view = 'group'; S.person = ''; store('viewMode', 'group'); S.openSet.clear(); render(); closeDrawer(); };
+$('#btnExpand').onclick = () => { S.view = 'group'; S.person = ''; store('viewMode2', 'group'); getPeople().forEach(g => S.openSet.add(g.name)); render(); closeDrawer(); };
+$('#btnCollapse').onclick = () => { S.view = 'group'; S.person = ''; store('viewMode2', 'group'); S.openSet.clear(); render(); closeDrawer(); };
 $('#btnExportNames').onclick = () => {
   const o = { ...CONFIG.nameOverrides, ...localNames() };
   if (!Object.keys(o).length) { toast('目前沒有自訂的人名'); return; }
@@ -1083,7 +1192,7 @@ document.addEventListener('keydown', e => {
   $('#footer').textContent = `${CONFIG.siteTitle} ${CONFIG.version} · 更新 ${CONFIG.updated}`;
   S.link = new URLSearchParams(location.search).get('link') || store('pcloudLink') || CONFIG.shareLink;
   S.sort = store('sortMode') || 'name-asc';
-  S.view = store('viewMode') || 'grid';
+  S.view = store('viewMode2') || 'people';
   if (!S.link) { openDrawer(); $('#list').innerHTML = '<div class="empty"><i class="ti ti-link"></i><p>在選單貼上 pCloud 公開資料夾連結</p></div>'; return; }
   load();
 })();
