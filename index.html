@@ -161,6 +161,9 @@ footer{text-align:center;color:var(--faint);font-size:12px;padding:0 16px 30px;p
 .mtop select{max-width:34vw;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 8px;font-size:13px}
 .stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px}
 .flipbox{margin:auto}
+.stage.zoomed{display:block;overflow:auto;touch-action:pan-x pan-y;-webkit-overflow-scrolling:touch}
+.stage.zoomed .flipbox{pointer-events:none}
+.zlabel{font-size:12px;color:var(--muted);min-width:40px;text-align:center;font-variant-numeric:tabular-nums;cursor:pointer}
 .pdfframe{width:100%;height:100%;border:0;border-radius:8px;background:#fff}
 .pdfcard>.ti{font-size:56px;color:var(--accent)}
 .pdfcard .btn{min-height:46px}
@@ -261,6 +264,9 @@ a.btn.primary{color:var(--accent-ink)}
   .seg button span{display:none}
   .mtop .icon-btn{width:38px;height:38px}
   .pnum{min-width:62px;font-size:12px}
+  .zlabel{display:none}
+  .rbar{gap:2px;padding:6px 6px;padding-bottom:max(8px,env(safe-area-inset-bottom))}
+  .rbar .icon-btn{width:36px;height:36px;font-size:20px}
   .sheet{border-radius:18px 18px 0 0}
 }
 @media(min-width:641px) and (max-width:899px){.grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
@@ -355,8 +361,11 @@ a.btn.primary{color:var(--accent-ink)}
     <div class="stage" id="stage"></div>
     <div class="rbar" id="rbar">
       <button class="icon-btn" id="btnPrev" aria-label="上一頁"><i class="ti ti-chevron-left"></i></button>
+      <button class="icon-btn" id="btnZoomOut" aria-label="縮小" title="縮小"><i class="ti ti-zoom-out"></i></button>
       <input type="range" id="pageRange" min="0" max="0" value="0" step="1" aria-label="跳頁">
       <span class="pnum" id="pageNum">0 / 0</span>
+      <span class="zlabel" id="zoomLabel" title="恢復原尺寸">100%</span>
+      <button class="icon-btn" id="btnZoomIn" aria-label="放大" title="放大"><i class="ti ti-zoom-in"></i></button>
       <button class="icon-btn" id="btnNext" aria-label="下一頁"><i class="ti ti-chevron-right"></i></button>
     </div>
   </div>
@@ -412,7 +421,7 @@ const CONFIG = {
   // 例：'https://pcloud-pdf.你的帳號.workers.dev'
   pdfProxy: 'https://pcloud-pdf.sunny-f0b.workers.dev',
   pdfProxyMaxBytes: 480 * 1024 * 1024,
-  version: 'v1.5.0',
+  version: 'v1.6.0',
   updated: '2026-10-21'
 };
 
@@ -958,7 +967,7 @@ function openInfo(w) {
 }
 
 /* ===================== 電子書閱讀器（PageFlip + PDF.js） ===================== */
-const R = { pf: null, w: null, srcs: [], src: null, pages: [], ratio: .75, count: 0, ph: 0, pdf: null, pdfUrl: '', hq: false, busy: new Set(), done: new Set() };
+const R = { pf: null, w: null, srcs: [], src: null, pages: [], ratio: .75, count: 0, ph: 0, pdf: null, pdfUrl: '', hq: false, zoom: 1, res: 1, busy: new Set(), done: new Set() };
 function sourcesOf(w) {
   const s = [];
   if (w.img.length) s.push({ type: 'img', label: `圖片版（${w.img.length} 頁）`, files: w.img });
@@ -981,7 +990,7 @@ function closeReader() {
   if (!$('#reader').classList.contains('open')) return;
   destroyFlip();
   if (R.pdf) { R.pdf.destroy(); R.pdf = null; }
-  R.src = null; $('#stage').innerHTML = '';
+  R.src = null; $('#stage').innerHTML = ''; $('#stage').classList.remove('zoomed'); R.zoom = 1;
   $('#reader').classList.remove('open'); syncLock();
 }
 const proxyUrl = f => `${CONFIG.pdfProxy.replace(/\/$/, '')}/?${new URLSearchParams({ code: S.code, fileid: f.fileid, api: S.api.includes('eapi') ? 'eu' : 'us', v: 3 })}`;
@@ -1052,6 +1061,7 @@ async function loadSource(src) {
 }
 function buildFlip(start = 0) {
   const stage = $('#stage'); stage.innerHTML = '';
+  R.zoom = 1; R.res = 1; stage.classList.remove('zoomed'); $('#zoomLabel').textContent = '100%';
   const aw = stage.clientWidth - 12, ah = stage.clientHeight - 12, r = R.ratio;
   const spread = R.count > 1 && aw > 700 && aw >= ah * r * 2 * 0.8;
   let ph = spread ? Math.min(ah, aw / 2 / r) : Math.min(ah, aw / r);
@@ -1073,7 +1083,7 @@ function buildFlip(start = 0) {
     mobileScrollSupport: false, maxShadowOpacity: .4, flippingTime: 600, startPage: start, swipeDistance: 20
   });
   R.pf.loadFromHTML(R.pages);
-  R.pf.on('flip', e => onPage(e.data));
+  R.pf.on('flip', e => { onPage(e.data); if (R.zoom > 1) { stage.scrollTop = 0; } });
   $('#pageRange').max = R.count - 1;
   onPage(start);
 }
@@ -1096,7 +1106,7 @@ async function loadPage(j) {
     } else {
       const page = await R.pdf.getPage(j + 1);
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      const vp = page.getViewport({ scale: R.ph * dpr / page.getViewport({ scale: 1 }).height });
+      const vp = page.getViewport({ scale: R.ph * dpr * R.res / page.getViewport({ scale: 1 }).height });
       el = document.createElement('canvas');
       el.width = vp.width; el.height = vp.height;
       await page.render({ canvasContext: el.getContext('2d'), viewport: vp }).promise;
@@ -1119,6 +1129,60 @@ $('#btnHQ').onclick = () => {
   toast(R.hq ? '已切換高畫質原圖（載入較慢）' : '已切換一般畫質');
 };
 $('#btnROpen').onclick = () => { if (R.pdfUrl) { const a = document.createElement('a'); a.href = R.pdfUrl; a.target = '_blank'; a.rel = 'noreferrer noopener'; a.click(); } };
+/* 放大縮小：按鈕、雙擊、Ctrl+滾輪、雙指縮放、鍵盤 + − 0 */
+const ZMIN = 1, ZMAX = 4;
+let zT;
+function setZoom(z, cx, cy) {
+  const box = $('#stage .flipbox'); if (!box || !R.pf) return;
+  const stage = $('#stage');
+  z = Math.round(Math.min(ZMAX, Math.max(ZMIN, z)) * 100) / 100;
+  if (z === R.zoom) return;
+  // 以指定點（預設畫面中心）為中心縮放
+  const r = stage.getBoundingClientRect();
+  const px = (cx ?? r.left + r.width / 2) - r.left, py = (cy ?? r.top + r.height / 2) - r.top;
+  const ox = (stage.scrollLeft + px) / R.zoom, oy = (stage.scrollTop + py) / R.zoom;
+  R.zoom = z;
+  box.style.zoom = z;
+  stage.classList.toggle('zoomed', z > 1);
+  if (z > 1) { stage.scrollLeft = ox * z - px; stage.scrollTop = oy * z - py; }
+  $('#zoomLabel').textContent = Math.round(z * 100) + '%';
+  // 放大後換成清晰版：圖片改載原圖，PDF 用較高解析度重繪
+  clearTimeout(zT);
+  zT = setTimeout(() => {
+    const need = z >= 1.5;
+    if (R.src?.type === 'img' && need && !R.hq) { R.hq = true; $('#btnHQ').classList.add('on'); R.done.clear(); onPage(R.pf.getCurrentPageIndex()); }
+    if (R.src?.type === 'pdf') { const res = Math.min(3, Math.max(1, Math.ceil(z))); if (res !== R.res) { R.res = res; R.done.clear(); onPage(R.pf.getCurrentPageIndex()); } }
+  }, 350);
+}
+$('#btnZoomIn').onclick = () => setZoom(R.zoom * 1.25);
+$('#btnZoomOut').onclick = () => setZoom(R.zoom / 1.25);
+$('#zoomLabel').onclick = () => setZoom(1);
+$('#stage').addEventListener('dblclick', e => { if (R.pf) setZoom(R.zoom > 1 ? 1 : 2, e.clientX, e.clientY); });
+$('#stage').addEventListener('wheel', e => {
+  if (!R.pf || !(e.ctrlKey || e.metaKey)) return;
+  e.preventDefault(); setZoom(R.zoom * (e.deltaY < 0 ? 1.1 : 1 / 1.1), e.clientX, e.clientY);
+}, { passive: false });
+(() => {
+  let d0 = 0, z0 = 1, lastTap = 0;
+  const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const mid = t => [(t[0].clientX + t[1].clientX) / 2, (t[0].clientY + t[1].clientY) / 2];
+  const st = $('#stage');
+  st.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) { d0 = dist(e.touches); z0 = R.zoom; }
+    else if (e.touches.length === 1) {
+      const now = Date.now();
+      if (now - lastTap < 300 && R.pf) { e.preventDefault(); setZoom(R.zoom > 1 ? 1 : 2, e.touches[0].clientX, e.touches[0].clientY); lastTap = 0; }
+      else lastTap = now;
+    }
+  }, { passive: false });
+  st.addEventListener('touchmove', e => {
+    if (e.touches.length !== 2 || !d0) return;
+    e.preventDefault();
+    const [x, y] = mid(e.touches);
+    setZoom(z0 * dist(e.touches) / d0, x, y);
+  }, { passive: false });
+  st.addEventListener('touchend', e => { if (e.touches.length < 2) d0 = 0; });
+})();
 $('#btnRInfo').onclick = () => R.w && openInfo(R.w);
 $('#btnRClose').onclick = closeReader;
 let rzT, lastW = innerWidth, lastH = innerHeight;
@@ -1264,6 +1328,9 @@ document.addEventListener('keydown', e => {
   if ($('#reader').classList.contains('open') && !$('#sheetOv').classList.contains('open')) {
     if (e.key === 'ArrowRight') R.pf?.flipNext();
     if (e.key === 'ArrowLeft') R.pf?.flipPrev();
+    if (e.key === '+' || e.key === '=') setZoom(R.zoom * 1.25);
+    if (e.key === '-' || e.key === '_') setZoom(R.zoom / 1.25);
+    if (e.key === '0') setZoom(1);
   }
 });
 
