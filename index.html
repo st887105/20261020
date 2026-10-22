@@ -41,6 +41,25 @@ input,select{font:inherit;color:inherit}
 .search input{flex:1;min-width:0;background:none;border:0;outline:0;font-size:15px}
 .search input::-webkit-search-cancel-button{display:none}
 #btnSearch,#btnSearchClose{display:none}
+/* 上傳 */
+.drop{display:block;border:2px dashed var(--line);border-radius:14px;padding:24px 16px;text-align:center;color:var(--muted);cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--accent);background:rgba(255,138,101,.06)}
+.drop .ti{font-size:40px;color:var(--accent)}
+.drop p{margin:8px 0 2px;color:var(--text);font-size:15px}
+.drop small{font-size:12px}
+.field{display:flex;flex-direction:column;gap:6px;margin-top:14px;font-size:13px;color:var(--muted)}
+.field input{width:100%;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:14px;outline:0;color:var(--text)}
+.field input:focus{border-color:var(--accent)}
+.up-prev{margin-top:8px;font-size:12px;color:var(--faint);word-break:break-all}
+.uplist{list-style:none;margin:14px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+.uplist li{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 10px;font-size:13px}
+.uplist .top{display:flex;align-items:center;gap:8px}
+.uplist .top span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.uplist .top small{color:var(--faint);flex:none}
+.uplist .st{flex:none;font-size:12px}.uplist .st.ok{color:#4cd39b}.uplist .st.err{color:var(--danger)}
+.prog{height:4px;border-radius:2px;background:var(--line);margin-top:7px;overflow:hidden}
+.prog i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+@media(max-width:640px){.topbar.searching #btnUpload{display:none}}
 
 /* ===== 人名選項：手機橫向捲動標籤 ===== */
 .chips{position:sticky;top:var(--top);z-index:20;display:none;gap:8px;overflow-x:auto;padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--line);scrollbar-width:none;scroll-snap-type:x proximity}
@@ -282,6 +301,7 @@ a.btn.primary{color:var(--accent-ink)}
   <label class="search"><i class="ti ti-search"></i><input id="q" type="search" placeholder="搜尋人名或作品" autocomplete="off" enterkeyhint="search"></label>
   <button class="icon-btn" id="btnSearchClose" aria-label="關閉搜尋"><i class="ti ti-x"></i></button>
   <button class="icon-btn" id="btnSearch" aria-label="搜尋"><i class="ti ti-search"></i></button>
+  <button class="icon-btn" id="btnUpload" aria-label="上傳作品" title="上傳作品"><i class="ti ti-upload"></i></button>
   <button class="icon-btn" id="btnMenu" aria-label="開啟選單"><i class="ti ti-menu-2"></i></button>
 </header>
 
@@ -315,6 +335,9 @@ a.btn.primary{color:var(--accent-ink)}
   <aside class="drawer" role="dialog" aria-label="選單">
     <div class="dr-head"><b>選單</b><button class="icon-btn" id="btnCloseDrawer" aria-label="關閉"><i class="ti ti-x"></i></button></div>
     <div class="dr-body">
+      <div class="dr-sec">
+        <button class="btn primary" id="btnUploadDrawer" style="width:100%"><i class="ti ti-upload"></i>上傳作品</button>
+      </div>
       <div class="dr-sec">
         <h4>排序方式</h4>
         <div class="seg" id="sortSeg">
@@ -421,8 +444,12 @@ const CONFIG = {
   // 例：'https://pcloud-pdf.你的帳號.workers.dev'
   pdfProxy: 'https://pcloud-pdf.sunny-f0b.workers.dev',
   pdfProxyMaxBytes: 480 * 1024 * 1024,
-  version: 'v1.6.0',
-  updated: '2026-10-21'
+  // 上傳：經由同一個中轉站送到寫真作品資料夾的「檔案請求連結」
+  uploadSite: 'photo',
+  uploadLink: 'https://e.pcloud.com/#/puplink?code=ij37ZRwed8TsIyVXbRMwKRinKg7uWH7nV',
+  uploadMaxBytes: 100 * 1024 * 1024,
+  version: 'v1.7.0',
+  updated: '2026-10-22'
 };
 
 /* ===================== 工具 ===================== */
@@ -593,8 +620,19 @@ function medianRatio(files) {
   const r = files.filter(f => f.width && f.height).slice(0, 40).map(f => f.width / f.height).sort((a, b) => a - b);
   return r.length ? r[Math.floor(r.length / 2)] : 0.75;
 }
+// 網站上傳的檔案命名為「人名 - 作品名__原檔名」，同一個前綴的檔案合成一部作品
+const UP_SEP = '__';
+const upKey = f => { const i = f.name.indexOf(UP_SEP); return i > 0 ? f.name.slice(0, i).trim() : ''; };
 function buildWorks(meta) {
   const works = [];
+  const grouped = new Map(); // 前綴 → { acc, node, who }
+  const toGroup = (f, who) => {
+    const key = upKey(f), k = kind(f);
+    if (!key || !k) return false;
+    if (!grouped.has(key)) grouped.set(key, { acc: { img: [], pdf: [], vid: [] }, node: f, who });
+    grouped.get(key).acc[k].push(f);
+    return true;
+  };
   const sorter = (a, b) => coll.compare(a.name, b.name);
   const add = (title, node, acc, person) => {
     acc.img.sort(sorter); acc.pdf.sort(sorter); acc.vid.sort(sorter);
@@ -630,6 +668,7 @@ function buildWorks(meta) {
           if (CONFIG.hide.test(x.name)) continue;
           if (x.isfolder) { add(x.name, x, collect(x, empty()), who); continue; }
           if (CONFIG.exclude.test(x.name)) continue;
+          if (toGroup(x, who)) continue;
           const k = kind(x); if (!k) continue;
           // PDF、影片：每個檔案各自是一部作品；零散圖片合成一本
           if (k === 'img') loose.img.push(x);
@@ -640,11 +679,13 @@ function buildWorks(meta) {
       continue;
     }
     if (CONFIG.exclude.test(c.name)) continue;
+    if (toGroup(c, '')) continue;
     const k = kind(c); if (!k) continue;
     if (k === 'img') rootImgs.img.push(c);
     else { const acc = empty(); acc[k].push(c); add(c.name.replace(/\.[^.]+$/, ''), c, acc); }
   }
   if (rootImgs.img.length) add(meta.name, meta, rootImgs);
+  for (const [key, g] of grouped) add(key, g.node, g.acc, g.who);
   mergeNames(works);
   return works;
 }
@@ -1333,6 +1374,98 @@ document.addEventListener('keydown', e => {
     if (e.key === '0') setZoom(1);
   }
 });
+
+/* ===================== 上傳 ===================== */
+const UP = { files: [], busy: false };
+const upKind = n => RX.pdf.test(n) ? 'pdf' : RX.vid.test(n) ? 'vid' : RX.img.test(n) ? 'img' : '';
+const today = () => { const d = new Date(); return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`; };
+const safeName = s => s.replace(/[\\/:*?"<>|]/g, ' ').replace(/\s+/g, ' ').trim();
+function upPrefix() {
+  const who = safeName($('#upWho')?.value || ''), work = safeName($('#upWork')?.value || '');
+  return who && work ? `${who} - ${work}` : '';
+}
+function openUpload() {
+  closeDrawer(); closeKebab();
+  const names = S.loaded ? [...new Set(S.works.map(w => w.name))].sort(coll.compare) : [];
+  openSheet(`<h3 class="sh-title">上傳作品到「寫真作品」</h3>
+    <label class="drop" id="drop">
+      <i class="ti ti-cloud-upload"></i>
+      <p>點這裡選檔案，或把檔案拖進來</p>
+      <small>圖片、PDF、影片都可以，一次可選多個，每個 ${fmtSize(CONFIG.uploadMaxBytes)} 以內</small>
+      <input type="file" id="upInput" multiple accept="image/*,.pdf,video/*,.mkv,.avi,.wmv" hidden>
+    </label>
+    <div class="field"><span>人名</span><input id="upWho" list="upNames" placeholder="例如：江宛庭" value="${esc(S.person || '')}" autocomplete="off"><datalist id="upNames">${names.map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>
+    <div class="field"><span>作品名稱（這次選的檔案會合成同一部作品）</span><input id="upWork" placeholder="例如：宛美情人" value="上傳${today()}" autocomplete="off"></div>
+    <div class="up-prev" id="upPrev"></div>
+    <ul class="uplist" id="uplist"></ul>
+    <div class="sh-actions">
+      <button class="btn primary" data-act="go" id="btnUpGo" disabled><i class="ti ti-upload"></i>開始上傳</button>
+      <a class="btn" href="${esc(CONFIG.uploadLink)}" target="_blank" rel="noopener"><i class="ti ti-external-link"></i>大檔改用 pCloud</a>
+    </div>`, act => { if (act === 'go') startUpload(); });
+  UP.files = [];
+  const inp = $('#upInput'), drop = $('#drop');
+  inp.onchange = () => { addUpFiles(inp.files); inp.value = ''; };
+  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => addUpFiles(e.dataTransfer.files));
+  ['#upWho', '#upWork'].forEach(sel => $(sel).addEventListener('input', drawUpList));
+  drawUpList();
+}
+function addUpFiles(list) {
+  for (const f of list) {
+    if (!upKind(f.name)) { toast(`「${f.name}」不是圖片、PDF 或影片，已略過`, 'err'); continue; }
+    if (f.size > CONFIG.uploadMaxBytes) { toast(`「${f.name}」超過 ${fmtSize(CONFIG.uploadMaxBytes)}，請改用 pCloud 上傳頁`, 'err'); continue; }
+    if (UP.files.some(x => x.f.name === f.name && x.f.size === f.size)) continue;
+    UP.files.push({ f, state: 'wait', pct: 0 });
+  }
+  drawUpList();
+}
+function drawUpList() {
+  const pre = upPrefix();
+  $('#upPrev').textContent = pre ? `上傳後的檔名：${pre}${UP_SEP}原檔名` : '請填人名和作品名稱';
+  $('#uplist').innerHTML = UP.files.map(x => {
+    const k = upKind(x.f.name);
+    const st = x.state === 'ok' ? '完成' : x.state === 'err' ? '失敗' : x.state === 'up' ? x.pct + '%' : '等待中';
+    return `<li><div class="top"><i class="ti ${k === 'vid' ? 'ti-movie' : k === 'pdf' ? 'ti-file-type-pdf' : 'ti-photo'}"></i><span>${esc(x.f.name)}</span><small>${fmtSize(x.f.size)}</small>
+      <span class="st ${x.state === 'ok' ? 'ok' : x.state === 'err' ? 'err' : ''}">${st}</span></div><div class="prog"><i style="width:${x.state === 'ok' ? 100 : x.pct}%"></i></div></li>`;
+  }).join('');
+  const b = $('#btnUpGo');
+  if (b) b.disabled = UP.busy || !pre || !UP.files.some(x => x.state === 'wait' || x.state === 'err');
+}
+function uploadOne(x, pre) {
+  return new Promise(resolve => {
+    const fd = new FormData();
+    fd.append('file', x.f, `${pre}${UP_SEP}${safeName(x.f.name)}`);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${CONFIG.pdfProxy.replace(/\/$/, '')}/upload?${new URLSearchParams({ site: CONFIG.uploadSite, names: '電子書房' })}`);
+    xhr.upload.onprogress = e => { if (e.lengthComputable) { x.pct = Math.round(e.loaded / e.total * 100); drawUpList(); } };
+    xhr.onload = () => {
+      let ok = false;
+      try { ok = xhr.status === 200 && JSON.parse(xhr.responseText).result === 0; } catch (e) {}
+      if (!ok) console.warn('upload', xhr.status, xhr.responseText);
+      x.state = ok ? 'ok' : 'err'; drawUpList(); resolve(ok);
+    };
+    xhr.onerror = () => { x.state = 'err'; drawUpList(); resolve(false); };
+    x.state = 'up'; x.pct = 0; drawUpList();
+    xhr.send(fd);
+  });
+}
+async function startUpload() {
+  const pre = upPrefix();
+  if (UP.busy || !pre) return;
+  UP.busy = true; drawUpList();
+  let ok = 0, bad = 0;
+  for (const x of UP.files) {
+    if (x.state === 'ok') continue;
+    (await uploadOne(x, pre)) ? ok++ : bad++;
+  }
+  UP.busy = false; drawUpList();
+  if (ok) toast(`已上傳 ${ok} 個檔案${bad ? `，${bad} 個失敗` : ''}`, bad ? '' : 'ok');
+  else if (bad) toast('上傳失敗，可改用 pCloud 上傳頁', 'err');
+  if (ok) setTimeout(load, 1500);
+}
+$('#btnUpload').onclick = openUpload;
+$('#btnUploadDrawer').onclick = openUpload;
 
 /* ===================== 啟動 ===================== */
 (function init() {
